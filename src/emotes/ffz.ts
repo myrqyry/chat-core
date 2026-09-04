@@ -1,6 +1,6 @@
 import type { EmoteCandidate } from '../types/emotes';
 import type { ProviderOptions, ProviderResult } from '../types/providers';
-import { fetchJson } from '../network/fetch';
+import { fetchJson, HttpError } from '../network/fetch';
 import { providerStatus } from '../types/providers';
 
 interface FfzEmote { id?: number; name?: string; urls?: Record<string, string>; }
@@ -23,11 +23,19 @@ const candidatesFrom = (data: FfzResponse, scope: 'channel' | 'global'): EmoteCa
     }];
   }));
 
-async function load(url: string, scope: 'channel' | 'global', options: ProviderOptions): Promise<ProviderResult> {
+async function load(
+  url: string,
+  scope: 'channel' | 'global',
+  options: ProviderOptions,
+  notFoundIsEmpty = false,
+): Promise<ProviderResult> {
   try {
     const candidates = candidatesFrom(await fetchJson<FfzResponse>(url, { signal: options.signal }), scope);
     return { candidates, status: providerStatus('ffz', scope, candidates) };
   } catch (error) {
+    if (notFoundIsEmpty && error instanceof HttpError && error.status === 404) {
+      return { candidates: [], status: providerStatus('ffz', scope, []) };
+    }
     return { candidates: [], status: providerStatus('ffz', scope, [], error) };
   }
 }
@@ -36,4 +44,4 @@ export const fetchGlobalFfz = (options: ProviderOptions = {}): Promise<ProviderR
   load('https://api.frankerfacez.com/v1/set/global', 'global', options);
 
 export const fetchChannelFfz = (channelName: string, options: ProviderOptions = {}): Promise<ProviderResult> =>
-  load(`https://api.frankerfacez.com/v1/room/${encodeURIComponent(channelName)}`, 'channel', options);
+  load(`https://api.frankerfacez.com/v1/room/${encodeURIComponent(channelName)}`, 'channel', options, true);
