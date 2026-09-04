@@ -55,11 +55,13 @@ const imagesFromUrls = (urls: Record<string, string> | undefined): BadgeImage[] 
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([scale, url]) => ({ url: normalizeUrl(url), scale: Number(scale) || undefined }));
 
-const twitchImages = (version: TwitchBadgeVersion): BadgeImage[] => [
-  version.image_url_1x ? { url: version.image_url_1x, scale: 1 } : null,
-  version.image_url_2x ? { url: version.image_url_2x, scale: 2 } : null,
-  version.image_url_4x ? { url: version.image_url_4x, scale: 4 } : null,
-].filter((image): image is BadgeImage => image !== null);
+const twitchImages = (version: TwitchBadgeVersion): BadgeImage[] => {
+  const images: BadgeImage[] = [];
+  if (version.image_url_1x) images.push({ url: version.image_url_1x, scale: 1 });
+  if (version.image_url_2x) images.push({ url: version.image_url_2x, scale: 2 });
+  if (version.image_url_4x) images.push({ url: version.image_url_4x, scale: 4 });
+  return images;
+};
 
 export function parseTwitchBadgeRefs(
   badges: Record<string, string> | null | undefined,
