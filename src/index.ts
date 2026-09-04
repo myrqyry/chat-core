@@ -3,12 +3,46 @@ export type {
   EmoteCandidate,
   EmoteFetchOptions,
   EmoteFetchResult,
+  EmoteImage,
+  EmoteModifier,
   EmoteProvider,
   EmoteScope,
   EmoteSet,
+  MergeCandidatesOptions,
   ProviderStatus,
 } from './types/emotes';
+export type {
+  Badge,
+  BadgeImage,
+  BadgeProvider,
+  BadgeRef,
+  BadgeScope,
+  EnrichmentResult,
+  NamePaint,
+  NamePaintGradient,
+  NamePaintShadow,
+  NamePaintStop,
+  UserCosmetics,
+} from './types/identity';
+export type {
+  ChatConnectionState,
+  ChatEvent,
+  ChatEventOrigin,
+  ChatEventType,
+  ChatFragment,
+  ChatMessage,
+  ChatPlatform,
+  ChatUser,
+  CheermoteFragment,
+  EmoteFragment,
+  MentionFragment,
+  NativeEmoteSpan,
+  ParseMessageOptions,
+  TextFragment,
+  UnknownFragment,
+} from './types/chat';
 export { mergeCandidates } from './emotes/registry';
+export { parseMessageFragments, twitchEmoteSpansFromTag } from './messages/parse';
 export { fetchJson, fetchWithTimeout, isAbortError } from './network/fetch';
 export { resolveTwitchUserId } from './emotes/twitch';
 export { fetchChannelSevenTv, fetchGlobalSevenTv } from './emotes/sevenTv';

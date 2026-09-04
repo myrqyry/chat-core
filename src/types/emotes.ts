@@ -2,12 +2,24 @@ export type EmoteProvider =
   | 'twitch'
   | 'twitch-cheer'
   | 'kick'
+  | 'youtube'
   | '7tv'
   | 'bttv'
   | 'ffz'
+  | 'emoji'
   | 'custom';
 
-export type EmoteScope = 'native' | 'channel' | 'global' | 'custom';
+export type EmoteScope = 'native' | 'user' | 'channel' | 'global' | 'emoji' | 'custom';
+export type EmoteModifier = 'overlay' | 'hidden';
+
+export interface EmoteImage {
+  url: string;
+  width?: number;
+  height?: number;
+  format?: string;
+  scale?: number;
+  animated?: boolean;
+}
 
 export interface Emote {
   code: string;
@@ -16,6 +28,10 @@ export interface Emote {
   altUrls?: string[];
   zeroWidth: boolean;
   provider: EmoteProvider;
+  animated?: boolean;
+  ownerName?: string;
+  images?: EmoteImage[];
+  modifier?: EmoteModifier;
 }
 
 export interface EmoteCandidate extends Emote {
@@ -42,4 +58,9 @@ export interface EmoteFetchResult {
 export interface EmoteFetchOptions {
   bypassCache?: boolean;
   signal?: AbortSignal;
+}
+
+export interface MergeCandidatesOptions {
+  providerPriority?: Partial<Record<EmoteProvider, number>>;
+  scopePriority?: Partial<Record<EmoteScope, number>>;
 }
