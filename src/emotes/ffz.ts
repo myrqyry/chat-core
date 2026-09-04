@@ -1,25 +1,55 @@
-import type { EmoteCandidate } from '../types/emotes';
+import type { EmoteCandidate, EmoteImage, EmoteModifier } from '../types/emotes';
 import type { ProviderOptions, ProviderResult } from '../types/providers';
 import { fetchJson, HttpError } from '../network/fetch';
 import { providerStatus } from '../types/providers';
 
-interface FfzEmote { id?: number; name?: string; urls?: Record<string, string>; }
+interface FfzEmote {
+  id?: number;
+  name?: string;
+  urls?: Record<string, string>;
+  modifier?: boolean;
+  modifier_flags?: number;
+  width?: number;
+  height?: number;
+}
 interface FfzSet { emoticons?: FfzEmote[]; }
 interface FfzResponse { sets?: Record<string, FfzSet>; }
+
+const normalizeUrl = (url: string): string => url.startsWith('//') ? `https:${url}` : url;
+
+const imagesFrom = (emote: FfzEmote): EmoteImage[] => Object.entries(emote.urls ?? {})
+  .sort(([a], [b]) => Number(a) - Number(b))
+  .map(([scale, url]) => ({
+    url: normalizeUrl(url),
+    scale: Number(scale) || undefined,
+    width: emote.width && Number(scale) ? emote.width * Number(scale) : emote.width,
+    height: emote.height && Number(scale) ? emote.height * Number(scale) : emote.height,
+  }));
+
+const modifierFrom = (emote: FfzEmote): EmoteModifier | undefined => {
+  if (!emote.modifier) return undefined;
+  return ((emote.modifier_flags ?? 0) & 1) !== 0 ? 'hidden' : 'overlay';
+};
 
 const candidatesFrom = (data: FfzResponse, scope: 'channel' | 'global'): EmoteCandidate[] =>
   Object.values(data.sets ?? {}).flatMap((set) => (set.emoticons ?? []).flatMap((emote) => {
     const id = emote.id;
     const code = emote.name;
-    const rawUrl = id != null ? emote.urls?.['4'] ?? emote.urls?.['2'] ?? emote.urls?.['1'] : undefined;
-    if (id == null || !code || !rawUrl) return [];
+    const images = imagesFrom(emote);
+    const primary = images.at(-1);
+    if (id == null || !code || !primary) return [];
+    const modifier = modifierFrom(emote);
     return [{
       id: String(id),
       code,
-      url: rawUrl.startsWith('//') ? `https:${rawUrl}` : rawUrl,
-      zeroWidth: false,
+      url: primary.url,
+      altUrls: images.slice(0, -1).map((image) => image.url),
+      zeroWidth: modifier === 'overlay',
       provider: 'ffz' as const,
       scope,
+      images,
+      ...(modifier ? { modifier } : {}),
+      raw: emote,
     }];
   }));
 

@@ -10,33 +10,52 @@ import {
 describe('provider adapters', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('parses 7TV channel candidates and the zero-width bitmask', async () => {
+  it('parses both 7TV zero-width flag locations and image metadata', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/users/twitch/123')) {
         return new Response(JSON.stringify({ emote_set: { id: 'set-1' } }), { status: 200 });
       }
       return new Response(JSON.stringify({
-        emotes: [{
-          id: 'emote-1',
-          name: 'Overlay',
-          data: { flags: 256, host: { url: '//cdn.7tv.app/emote/emote-1', files: [{ name: '1x.png' }] } },
-        }],
+        emotes: [
+          {
+            id: 'emote-entry-flag', name: 'EntryOverlay', flags: 1,
+            data: { host: { url: '//cdn.7tv.app/emote/entry', files: [{ name: '4x.webp', width: 128, height: 128 }] } },
+          },
+          {
+            id: 'emote-data-flag', name: 'DataOverlay',
+            data: { flags: 256, host: { url: '//cdn.7tv.app/emote/data', files: [{ name: '4x.webp' }] } },
+          },
+        ],
       }), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await fetchChannelSevenTv('channel', '123');
 
-    expect(result.status).toMatchObject({ provider: '7tv', scope: 'channel', ok: true, count: 1 });
-    expect(result.candidates[0]).toMatchObject({ code: 'Overlay', zeroWidth: true, scope: 'channel' });
-    expect(result.candidates[0].altUrls).toEqual(['https://cdn.7tv.app/emote/emote-1/1x.png']);
+    expect(result.status).toMatchObject({ provider: '7tv', scope: 'channel', ok: true, count: 2 });
+    expect(result.candidates.map((candidate) => candidate.zeroWidth)).toEqual([true, true]);
+    expect(result.candidates[0]).toMatchObject({
+      modifier: 'overlay',
+      images: [{ width: 128, height: 128 }],
+    });
+  });
+
+  it('maps FFZ modifiers into overlay and hidden semantics', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ sets: { '1': { emoticons: [
+      { id: 7, name: 'Overlay', modifier: true, modifier_flags: 0, urls: { '1': '//cdn.example/7' } },
+      { id: 8, name: 'Hidden', modifier: true, modifier_flags: 1, urls: { '1': '//cdn.example/8' } },
+    ] } } }), { status: 200 })));
+
+    const result = await fetchGlobalFfz();
+    expect(result.candidates[0]).toMatchObject({ modifier: 'overlay', zeroWidth: true });
+    expect(result.candidates[1]).toMatchObject({ modifier: 'hidden', zeroWidth: false });
   });
 
   it('parses global BTTV and FFZ candidates', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input).includes('betterttv')) {
-        return new Response(JSON.stringify([{ id: 'bttv-1', code: 'GlobalBTTV' }]), { status: 200 });
+        return new Response(JSON.stringify([{ id: 'bttv-1', code: 'GlobalBTTV', animated: true }]), { status: 200 });
       }
       return new Response(JSON.stringify({ sets: { '1': { emoticons: [{ id: 7, name: 'GlobalFFZ', urls: { '1': '//cdn.example.com/7' } }] } } }), { status: 200 });
     });
@@ -44,7 +63,7 @@ describe('provider adapters', () => {
 
     const [bttv, ffz] = await Promise.all([fetchGlobalBttv(), fetchGlobalFfz()]);
 
-    expect(bttv.candidates[0]).toMatchObject({ code: 'GlobalBTTV', scope: 'global' });
+    expect(bttv.candidates[0]).toMatchObject({ code: 'GlobalBTTV', scope: 'global', animated: true });
     expect(ffz.candidates[0]).toMatchObject({ code: 'GlobalFFZ', url: 'https://cdn.example.com/7', scope: 'global' });
   });
 

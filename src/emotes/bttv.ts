@@ -1,20 +1,42 @@
-import type { EmoteCandidate } from '../types/emotes';
+import type { EmoteCandidate, EmoteImage } from '../types/emotes';
 import type { ProviderOptions, ProviderResult } from '../types/providers';
 import { fetchJson, HttpError } from '../network/fetch';
 import { providerStatus } from '../types/providers';
 
-interface BttvEmote { id?: string; code?: string; }
+interface BttvEmote {
+  id?: string;
+  code?: string;
+  animated?: boolean;
+  imageType?: string;
+  user?: { name?: string };
+}
 interface BttvResponse { channelEmotes?: BttvEmote[]; sharedEmotes?: BttvEmote[]; }
 
+const imagesFrom = (emote: BttvEmote): EmoteImage[] => [1, 2, 3].map((scale) => ({
+  url: `https://cdn.betterttv.net/emote/${emote.id}/${scale}x`,
+  scale,
+  format: emote.imageType,
+  animated: emote.animated ?? emote.imageType === 'gif',
+}));
+
 const candidatesFrom = (emotes: BttvEmote[], scope: 'channel' | 'global'): EmoteCandidate[] =>
-  emotes.flatMap((emote) => emote.id && emote.code ? [{
-    id: emote.id,
-    code: emote.code,
-    url: `https://cdn.betterttv.net/emote/${emote.id}/3x`,
-    zeroWidth: false,
-    provider: 'bttv' as const,
-    scope,
-  }] : []);
+  emotes.flatMap((emote) => {
+    if (!emote.id || !emote.code) return [];
+    const images = imagesFrom(emote);
+    return [{
+      id: emote.id,
+      code: emote.code,
+      url: images[2].url,
+      altUrls: images.slice(0, 2).map((image) => image.url),
+      zeroWidth: false,
+      provider: 'bttv' as const,
+      scope,
+      animated: emote.animated ?? emote.imageType === 'gif',
+      ownerName: emote.user?.name,
+      images,
+      raw: emote,
+    }];
+  });
 
 export async function fetchGlobalBttv(options: ProviderOptions = {}): Promise<ProviderResult> {
   try {
