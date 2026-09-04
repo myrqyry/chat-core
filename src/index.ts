@@ -43,6 +43,19 @@ export type {
 } from './types/chat';
 export { mergeCandidates } from './emotes/registry';
 export { parseMessageFragments, twitchEmoteSpansFromTag } from './messages/parse';
+export {
+  fetchBttvBadgesForUser,
+  fetchBttvBadgesForUserDetailed,
+  fetchFfzBadgesForUser,
+  fetchFfzBadgesForUserDetailed,
+  fetchTwitchChannelBadgesDetailed,
+  fetchTwitchGlobalBadgesDetailed,
+  mergeBadges,
+  parseTwitchBadgeRefs,
+  resolveBadgeRefs,
+} from './identity/badges';
+export type { TwitchBadgeApiOptions } from './identity/badges';
+export { fetchSevenTvUserCosmetics, fetchSevenTvUserCosmeticsDetailed } from './identity/sevenTv';
 export { fetchJson, fetchWithTimeout, isAbortError } from './network/fetch';
 export { resolveTwitchUserId } from './emotes/twitch';
 export { fetchChannelSevenTv, fetchGlobalSevenTv } from './emotes/sevenTv';
