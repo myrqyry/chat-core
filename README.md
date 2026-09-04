@@ -33,6 +33,12 @@ Channel names are normalized with `trim().toLowerCase()` for cache and
 in-flight request identity. A consumer abort only rejects that consumer's
 promise; it does not cancel a request shared with other consumers.
 
+A missing optional provider account is treated as an empty successful channel
+result. Actual provider/network failures set `complete: false`. Degraded
+results are returned to the current caller but are not cached, so a later
+refresh can retry the failed provider instead of replaying the degraded result
+for the full cache lifetime.
+
 ## Precedence
 
 Provider adapters return scoped candidates. The registry resolves collisions in
@@ -47,15 +53,16 @@ retain a non-empty last-known-good set when a refresh reports `complete: false`.
 
 ## Development
 
-Run these commands from `/home/myrqyry/MQR/chat-core`:
+Run these commands from the repository root:
 
 ```bash
 pnpm typecheck
-pnpm test -- --run
+pnpm test
 ```
 
-The package is a sibling workspace member. It is intentionally not a separate
-Git repository; application repositories track their own integration changes.
+`chat-core` now lives in its own Git repository. The Noita and Sketchy overlays
+currently consume a pinned Git commit of this package, so application dependency
+pins must be advanced deliberately after a verified chat-core change lands.
 
 ## Next steps
 

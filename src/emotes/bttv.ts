@@ -1,6 +1,6 @@
 import type { EmoteCandidate } from '../types/emotes';
 import type { ProviderOptions, ProviderResult } from '../types/providers';
-import { fetchJson } from '../network/fetch';
+import { fetchJson, HttpError } from '../network/fetch';
 import { providerStatus } from '../types/providers';
 
 interface BttvEmote { id?: string; code?: string; }
@@ -33,6 +33,9 @@ export async function fetchChannelBttv(twitchUserId: string | null, options: Pro
     const candidates = candidatesFrom([...(data.channelEmotes ?? []), ...(data.sharedEmotes ?? [])], 'channel');
     return { candidates, status: providerStatus('bttv', 'channel', candidates) };
   } catch (error) {
+    if (error instanceof HttpError && error.status === 404) {
+      return { candidates: [], status: providerStatus('bttv', 'channel', []) };
+    }
     return { candidates: [], status: providerStatus('bttv', 'channel', [], error) };
   }
 }

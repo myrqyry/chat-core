@@ -1,9 +1,11 @@
 import type { EmoteFetchOptions, EmoteFetchResult, EmoteSet, ProviderStatus } from '../types/emotes';
+import type { ProviderResult } from '../types/providers';
+import { providerStatus } from '../types/providers';
 import { isAbortError } from '../network/fetch';
 import { fetchChannelSevenTv, fetchGlobalSevenTv } from './sevenTv';
 import { fetchChannelBttv, fetchGlobalBttv } from './bttv';
 import { fetchChannelFfz, fetchGlobalFfz } from './ffz';
-import { resolveTwitchUserId } from './twitch';
+import { resolveTwitchUserIdDetailed } from './twitch';
 import { mergeCandidates } from './registry';
 import { readCachedEmotes, writeCachedEmotes } from './cache';
 
@@ -22,16 +24,32 @@ const abortable = <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => 
   });
 };
 
+const failedBttvLookup = (error?: string): ProviderResult => ({
+  candidates: [],
+  status: providerStatus(
+    'bttv',
+    'channel',
+    [],
+    new Error(error ? `Twitch user lookup failed: ${error}` : 'Twitch user lookup failed'),
+  ),
+});
+
 const load = async (channel: string): Promise<EmoteFetchResult> => {
-  const globalResults = await Promise.all([
+  const globalResultsPromise = Promise.all([
     fetchGlobalSevenTv(),
     fetchGlobalBttv(),
     fetchGlobalFfz(),
   ]);
-  const userId = await resolveTwitchUserId(channel);
+  const userResolutionPromise = resolveTwitchUserIdDetailed(channel);
+
+  const [globalResults, userResolution] = await Promise.all([
+    globalResultsPromise,
+    userResolutionPromise,
+  ]);
+
   const channelResults = await Promise.all([
-    fetchChannelSevenTv(channel, userId),
-    fetchChannelBttv(userId),
+    fetchChannelSevenTv(channel, userResolution.id),
+    userResolution.ok ? fetchChannelBttv(userResolution.id) : Promise.resolve(failedBttvLookup(userResolution.error)),
     fetchChannelFfz(channel),
   ]);
   const results = [...globalResults, ...channelResults];
@@ -43,7 +61,11 @@ const load = async (channel: string): Promise<EmoteFetchResult> => {
     fromCache: false,
     complete: providers.every((status) => status.ok),
   };
-  writeCachedEmotes(channel, result);
+
+  // A degraded result is useful to the current caller, but caching it would
+  // prevent later calls from retrying the provider that failed for the full
+  // cache lifetime. Only complete snapshots become reusable cache entries.
+  if (result.complete) writeCachedEmotes(channel, result);
   return result;
 };
 
