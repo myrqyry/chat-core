@@ -36,10 +36,15 @@ describe('fetchWithTimeout', () => {
     }));
     vi.stubGlobal('fetch', fetchMock);
 
-    const request = fetchWithTimeout('https://example.com/slow', {}, 50, 0);
+    const settled = fetchWithTimeout('https://example.com/slow', {}, 50, 0).then(
+      () => ({ ok: true as const, error: undefined }),
+      (error: unknown) => ({ ok: false as const, error }),
+    );
     await vi.advanceTimersByTimeAsync(50);
 
-    await expect(request).rejects.toMatchObject({ name: 'AbortError' });
+    const result = await settled;
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatchObject({ name: 'AbortError' });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
