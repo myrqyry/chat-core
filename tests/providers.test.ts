@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchChannelSevenTv, fetchGlobalBttv, fetchGlobalFfz } from '../src/index';
+import {
+  fetchChannelBttv,
+  fetchChannelFfz,
+  fetchChannelSevenTv,
+  fetchGlobalBttv,
+  fetchGlobalFfz,
+} from '../src/index';
 
 describe('provider adapters', () => {
   beforeEach(() => vi.restoreAllMocks());
@@ -40,5 +46,29 @@ describe('provider adapters', () => {
 
     expect(bttv.candidates[0]).toMatchObject({ code: 'GlobalBTTV', scope: 'global' });
     expect(ffz.candidates[0]).toMatchObject({ code: 'GlobalFFZ', url: 'https://cdn.example.com/7', scope: 'global' });
+  });
+
+  it('treats a missing optional channel provider account as an empty success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 404 })));
+
+    const [bttv, ffz, sevenTv] = await Promise.all([
+      fetchChannelBttv('123'),
+      fetchChannelFfz('channel'),
+      fetchChannelSevenTv('channel', '123'),
+    ]);
+
+    expect(bttv).toMatchObject({ candidates: [], status: { ok: true, count: 0 } });
+    expect(ffz).toMatchObject({ candidates: [], status: { ok: true, count: 0 } });
+    expect(sevenTv).toMatchObject({ candidates: [], status: { ok: true, count: 0 } });
+  });
+
+  it('reports a real 7TV channel provider failure instead of silently succeeding', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 503 })));
+
+    const result = await fetchChannelSevenTv('channel', '123');
+
+    expect(result.candidates).toEqual([]);
+    expect(result.status).toMatchObject({ provider: '7tv', scope: 'channel', ok: false, count: 0 });
+    expect(result.status.error).toContain('503');
   });
 });
