@@ -49,6 +49,7 @@ const candidatesFrom = (data: FfzResponse, scope: 'channel' | 'global'): EmoteCa
       scope,
       images,
       ...(modifier ? { modifier } : {}),
+      raw: emote,
     }];
   }));
 

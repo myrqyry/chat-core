@@ -36,6 +36,13 @@ export interface EmoteFragment {
   text: string;
   emote: Emote;
   overlays: Emote[];
+  modifiers: Emote[];
+}
+
+export interface ModifierFragment {
+  type: 'modifier';
+  text: string;
+  emote: Emote;
 }
 
 export interface MentionFragment {
@@ -60,7 +67,13 @@ export interface UnknownFragment {
   raw?: unknown;
 }
 
-export type ChatFragment = TextFragment | EmoteFragment | MentionFragment | CheermoteFragment | UnknownFragment;
+export type ChatFragment =
+  | TextFragment
+  | EmoteFragment
+  | ModifierFragment
+  | MentionFragment
+  | CheermoteFragment
+  | UnknownFragment;
 
 export interface ChatMessage {
   id: string;

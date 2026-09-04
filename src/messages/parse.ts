@@ -23,22 +23,31 @@ const pushText = (fragments: ChatFragment[], text: string): void => {
   else fragments.push({ type: 'text', text });
 };
 
-const appendEmote = (fragments: ChatFragment[], text: string, emote: Emote): void => {
-  if (emote.modifier === 'hidden') return;
+const previousBaseEmote = (fragments: ChatFragment[]): { fragment: EmoteFragment; separated: boolean } | null => {
+  let baseIndex = fragments.length - 1;
+  const trailing = fragments[baseIndex];
+  const separated = trailing?.type === 'text' && /^\s+$/u.test(trailing.text);
+  if (separated) baseIndex -= 1;
+  const base = fragments[baseIndex];
+  return base?.type === 'emote' ? { fragment: base, separated } : null;
+};
 
-  if (emote.zeroWidth || emote.modifier === 'overlay') {
-    let baseIndex = fragments.length - 1;
-    const trailing = fragments[baseIndex];
-    if (trailing?.type === 'text' && /^\s+$/u.test(trailing.text)) baseIndex -= 1;
-    const base = fragments[baseIndex];
-    if (base?.type === 'emote') {
-      if (baseIndex !== fragments.length - 1) fragments.pop();
-      base.overlays.push(emote);
+const appendEmote = (fragments: ChatFragment[], text: string, emote: Emote): void => {
+  if (emote.modifier === 'overlay' || emote.modifier === 'hidden' || emote.zeroWidth) {
+    const base = previousBaseEmote(fragments);
+    if (base) {
+      if (base.separated) fragments.pop();
+      if (emote.modifier === 'hidden') base.fragment.modifiers.push(emote);
+      else base.fragment.overlays.push(emote);
+      return;
+    }
+    if (emote.modifier === 'hidden') {
+      fragments.push({ type: 'modifier', text, emote });
       return;
     }
   }
 
-  const fragment: EmoteFragment = { type: 'emote', text, emote, overlays: [] };
+  const fragment: EmoteFragment = { type: 'emote', text, emote, overlays: [], modifiers: [] };
   fragments.push(fragment);
 };
 

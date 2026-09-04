@@ -32,6 +32,7 @@ export interface Emote {
   ownerName?: string;
   images?: EmoteImage[];
   modifier?: EmoteModifier;
+  raw?: unknown;
 }
 
 export interface EmoteCandidate extends Emote {

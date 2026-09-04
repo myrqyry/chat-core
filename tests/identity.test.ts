@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  clearBadgeCaches,
+  clearSevenTvUserCosmeticsCache,
   fetchBttvBadgesForUser,
   fetchFfzBadgesForUser,
   fetchSevenTvUserCosmeticsDetailed,
@@ -11,7 +13,10 @@ import {
 import type { Badge } from '../src/index';
 
 describe('badges', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    clearBadgeCaches();
+  });
 
   it('parses and resolves native Twitch badge references', () => {
     const refs = parseTwitchBadgeRefs({ moderator: '1' }, { moderator: '12' });
@@ -56,6 +61,18 @@ describe('badges', () => {
     expect(await fetchFfzBadgesForUser('SomeUser')).toMatchObject([{ provider: 'ffz', replaces: 'subscriber' }]);
   });
 
+  it('reuses provider badge catalogs across users until the cache expires', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([
+      { id: 'b1', name: 'One', badge: { svg: 'https://cdn.example/1.svg' } },
+      { id: 'b2', name: 'Two', badge: { svg: 'https://cdn.example/2.svg' } },
+    ]), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchBttvBadgesForUser('One');
+    await fetchBttvBadgesForUser('Two');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('lets a provider badge replace a native badge by id', () => {
     const native: Badge = {
       id: 'subscriber', provider: 'twitch', scope: 'channel', images: [{ url: 'https://example/sub.png' }],
@@ -69,7 +86,10 @@ describe('badges', () => {
 });
 
 describe('7TV cosmetics', () => {
-  beforeEach(() => vi.restoreAllMocks());
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    clearSevenTvUserCosmeticsCache();
+  });
 
   it('returns renderer-neutral name paint and badge metadata', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -99,6 +119,9 @@ describe('7TV cosmetics', () => {
     });
     expect(result.value?.badges[0]).toMatchObject({ id: 'badge1', provider: '7tv', scope: 'user' });
     expect(result.value?.badges[0].images[0].url).toBe('https://cdn.7tv.app/badge/badge1/3x.webp');
+
+    await fetchSevenTvUserCosmeticsDetailed('123');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('treats a Twitch user with no 7TV account as an ordinary empty result', async () => {

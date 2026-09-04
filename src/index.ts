@@ -18,6 +18,7 @@ export type {
   BadgeRef,
   BadgeScope,
   EnrichmentResult,
+  IdentityFetchOptions,
   NamePaint,
   NamePaintGradient,
   NamePaintShadow,
@@ -36,6 +37,7 @@ export type {
   CheermoteFragment,
   EmoteFragment,
   MentionFragment,
+  ModifierFragment,
   NativeEmoteSpan,
   ParseMessageOptions,
   TextFragment,
@@ -44,18 +46,25 @@ export type {
 export { mergeCandidates } from './emotes/registry';
 export { parseMessageFragments, twitchEmoteSpansFromTag } from './messages/parse';
 export {
+  clearBadgeCaches,
   fetchBttvBadgesForUser,
   fetchBttvBadgesForUserDetailed,
   fetchFfzBadgesForUser,
   fetchFfzBadgesForUserDetailed,
   fetchTwitchChannelBadgesDetailed,
   fetchTwitchGlobalBadgesDetailed,
+  IDENTITY_BADGE_CACHE_MS,
   mergeBadges,
   parseTwitchBadgeRefs,
   resolveBadgeRefs,
 } from './identity/badges';
 export type { TwitchBadgeApiOptions } from './identity/badges';
-export { fetchSevenTvUserCosmetics, fetchSevenTvUserCosmeticsDetailed } from './identity/sevenTv';
+export {
+  clearSevenTvUserCosmeticsCache,
+  fetchSevenTvUserCosmetics,
+  fetchSevenTvUserCosmeticsDetailed,
+  SEVEN_TV_COSMETICS_CACHE_MS,
+} from './identity/sevenTv';
 export { fetchJson, fetchWithTimeout, isAbortError } from './network/fetch';
 export { resolveTwitchUserId } from './emotes/twitch';
 export { fetchChannelSevenTv, fetchGlobalSevenTv } from './emotes/sevenTv';

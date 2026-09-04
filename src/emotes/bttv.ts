@@ -16,7 +16,7 @@ const imagesFrom = (emote: BttvEmote): EmoteImage[] => [1, 2, 3].map((scale) => 
   url: `https://cdn.betterttv.net/emote/${emote.id}/${scale}x`,
   scale,
   format: emote.imageType,
-  animated: emote.animated,
+  animated: emote.animated ?? emote.imageType === 'gif',
 }));
 
 const candidatesFrom = (emotes: BttvEmote[], scope: 'channel' | 'global'): EmoteCandidate[] =>
@@ -31,9 +31,10 @@ const candidatesFrom = (emotes: BttvEmote[], scope: 'channel' | 'global'): Emote
       zeroWidth: false,
       provider: 'bttv' as const,
       scope,
-      animated: emote.animated,
+      animated: emote.animated ?? emote.imageType === 'gif',
       ownerName: emote.user?.name,
       images,
+      raw: emote,
     }];
   });
 

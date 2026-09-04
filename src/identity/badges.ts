@@ -1,10 +1,16 @@
 import { fetchJson } from '../network/fetch';
-import type { ProviderOptions } from '../types/providers';
-import type { Badge, BadgeImage, BadgeRef, EnrichmentResult } from '../types/identity';
+import type { Badge, BadgeImage, BadgeRef, EnrichmentResult, IdentityFetchOptions } from '../types/identity';
 
-export interface TwitchBadgeApiOptions extends ProviderOptions {
+export const IDENTITY_BADGE_CACHE_MS = 15 * 60 * 1000;
+
+export interface TwitchBadgeApiOptions extends IdentityFetchOptions {
   clientId: string;
   accessToken: string;
+}
+
+interface CacheEntry<T> {
+  expiresAt: number;
+  value: T;
 }
 
 interface TwitchBadgeVersion {
@@ -47,8 +53,14 @@ interface FfzBadgesResponse {
   users?: Record<string, string[]>;
 }
 
+let bttvCache: CacheEntry<BttvBadgeRow[]> | null = null;
+let ffzCache: CacheEntry<FfzBadgesResponse> | null = null;
+const twitchCache = new Map<string, CacheEntry<Badge[]>>();
+
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : 'Badge lookup failed';
 const normalizeUrl = (url: string): string => url.startsWith('//') ? `https:${url}` : url;
+const ttlFor = (options: IdentityFetchOptions): number => options.cacheTtlMs ?? IDENTITY_BADGE_CACHE_MS;
+const fresh = <T>(entry: CacheEntry<T> | null | undefined): entry is CacheEntry<T> => !!entry && entry.expiresAt > Date.now();
 
 const imagesFromUrls = (urls: Record<string, string> | undefined): BadgeImage[] =>
   Object.entries(urls ?? {})
@@ -62,6 +74,12 @@ const twitchImages = (version: TwitchBadgeVersion): BadgeImage[] => {
   if (version.image_url_4x) images.push({ url: version.image_url_4x, scale: 4 });
   return images;
 };
+
+export function clearBadgeCaches(): void {
+  bttvCache = null;
+  ffzCache = null;
+  twitchCache.clear();
+}
 
 export function parseTwitchBadgeRefs(
   badges: Record<string, string> | null | undefined,
@@ -110,6 +128,9 @@ async function fetchTwitchBadgesDetailed(
   scope: 'global' | 'channel',
   options: TwitchBadgeApiOptions,
 ): Promise<EnrichmentResult<Badge[]>> {
+  const cached = twitchCache.get(url);
+  if (!options.bypassCache && fresh(cached)) return { value: cached.value, ok: true };
+
   try {
     const data = await fetchJson<TwitchBadgeResponse>(url, {
       signal: options.signal,
@@ -129,8 +150,11 @@ async function fetchTwitchBadgesDetailed(
         title: version.title,
         tooltip: version.description,
         images,
+        raw: version,
       }];
     }));
+    const ttl = ttlFor(options);
+    if (ttl > 0) twitchCache.set(url, { value: badges, expiresAt: Date.now() + ttl });
     return { value: badges, ok: true };
   } catch (error) {
     return { value: null, ok: false, error: errorMessage(error) };
@@ -152,14 +176,20 @@ export const fetchTwitchChannelBadgesDetailed = (
     options,
   );
 
+async function loadBttvBadges(options: IdentityFetchOptions): Promise<BttvBadgeRow[]> {
+  if (!options.bypassCache && fresh(bttvCache)) return bttvCache.value;
+  const rows = await fetchJson<BttvBadgeRow[]>('https://api.betterttv.net/3/cached/badges', { signal: options.signal });
+  const ttl = ttlFor(options);
+  if (ttl > 0) bttvCache = { value: rows, expiresAt: Date.now() + ttl };
+  return rows;
+}
+
 export async function fetchBttvBadgesForUserDetailed(
   username: string,
-  options: ProviderOptions = {},
+  options: IdentityFetchOptions = {},
 ): Promise<EnrichmentResult<Badge[]>> {
   try {
-    const rows = await fetchJson<BttvBadgeRow[]>('https://api.betterttv.net/3/cached/badges', {
-      signal: options.signal,
-    });
+    const rows = await loadBttvBadges(options);
     const wanted = username.toLocaleLowerCase();
     const badges = rows
       .filter((row) => row.name?.toLocaleLowerCase() === wanted && row.badge?.svg)
@@ -169,6 +199,7 @@ export async function fetchBttvBadgesForUserDetailed(
         scope: 'user',
         title: row.badge?.description,
         images: [{ url: normalizeUrl(row.badge!.svg!) }],
+        raw: row,
       }));
     return { value: badges, ok: true };
   } catch (error) {
@@ -178,19 +209,25 @@ export async function fetchBttvBadgesForUserDetailed(
 
 export async function fetchBttvBadgesForUser(
   username: string,
-  options: ProviderOptions = {},
+  options: IdentityFetchOptions = {},
 ): Promise<Badge[]> {
   return (await fetchBttvBadgesForUserDetailed(username, options)).value ?? [];
 }
 
+async function loadFfzBadges(options: IdentityFetchOptions): Promise<FfzBadgesResponse> {
+  if (!options.bypassCache && fresh(ffzCache)) return ffzCache.value;
+  const data = await fetchJson<FfzBadgesResponse>('https://api.frankerfacez.com/v1/badges', { signal: options.signal });
+  const ttl = ttlFor(options);
+  if (ttl > 0) ffzCache = { value: data, expiresAt: Date.now() + ttl };
+  return data;
+}
+
 export async function fetchFfzBadgesForUserDetailed(
   username: string,
-  options: ProviderOptions = {},
+  options: IdentityFetchOptions = {},
 ): Promise<EnrichmentResult<Badge[]>> {
   try {
-    const data = await fetchJson<FfzBadgesResponse>('https://api.frankerfacez.com/v1/badges', {
-      signal: options.signal,
-    });
+    const data = await loadFfzBadges(options);
     const wanted = username.toLocaleLowerCase();
     const badges = Object.entries(data.users ?? {}).flatMap(([badgeId, users]): Badge[] => {
       if (!users.some((user) => user.toLocaleLowerCase() === wanted)) return [];
@@ -208,6 +245,7 @@ export async function fetchFfzBadgesForUserDetailed(
         slot: row.slot,
         ...(row.replaces ? { replaces: row.replaces } : {}),
         ...(row.color ? { color: row.color } : {}),
+        raw: row,
       }];
     });
     return { value: badges, ok: true };
@@ -218,7 +256,7 @@ export async function fetchFfzBadgesForUserDetailed(
 
 export async function fetchFfzBadgesForUser(
   username: string,
-  options: ProviderOptions = {},
+  options: IdentityFetchOptions = {},
 ): Promise<Badge[]> {
   return (await fetchFfzBadgesForUserDetailed(username, options)).value ?? [];
 }

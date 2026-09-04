@@ -41,11 +41,19 @@ const imagesFrom = (host: string, files: SevenTvHostFile[]): EmoteImage[] => {
   }] : []);
 };
 
-const primaryImage = (images: EmoteImage[]): EmoteImage | undefined =>
-  images.find((image) => /\/4x\.webp$/u.test(image.url)) ??
-  images.find((image) => /\.webp$/u.test(image.url)) ??
-  images.find((image) => /\/4x\.avif$/u.test(image.url)) ??
-  images.at(-1);
+const imageRank = (image: EmoteImage): number => {
+  if (image.width && image.height) return image.width * image.height;
+  const scale = image.url.match(/\/(\d+)x\.[a-z0-9]+$/iu)?.[1];
+  return scale ? Number(scale) : 0;
+};
+
+const bestImage = (images: EmoteImage[]): EmoteImage | undefined => {
+  const highest = (items: EmoteImage[]): EmoteImage | undefined =>
+    [...items].sort((a, b) => imageRank(b) - imageRank(a))[0];
+  return highest(images.filter((image) => /\.webp$/iu.test(image.url))) ??
+    highest(images.filter((image) => /\.avif$/iu.test(image.url))) ??
+    highest(images);
+};
 
 const candidatesFrom = (emotes: SevenTvEmote[], scope: 'channel' | 'global'): EmoteCandidate[] =>
   emotes.flatMap((emote) => {
@@ -54,7 +62,7 @@ const candidatesFrom = (emotes: SevenTvEmote[], scope: 'channel' | 'global'): Em
     const host = emote.data?.host?.url;
     if (!id || !code || !host) return [];
     const images = imagesFrom(host, emote.data?.host?.files ?? []);
-    const primary = primaryImage(images);
+    const primary = bestImage(images);
     if (!primary) return [];
     const zeroWidth = (((emote.flags ?? 0) & 1) !== 0) || (((emote.data?.flags ?? 0) & 256) !== 0);
     return [{
@@ -68,6 +76,7 @@ const candidatesFrom = (emotes: SevenTvEmote[], scope: 'channel' | 'global'): Em
       animated: emote.data?.animated ?? images.some((image) => image.animated),
       images,
       ...(zeroWidth ? { modifier: 'overlay' as const } : {}),
+      raw: emote,
     }];
   });
 

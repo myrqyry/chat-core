@@ -1,6 +1,12 @@
 export type BadgeProvider = 'twitch' | 'kick' | 'youtube' | '7tv' | 'bttv' | 'ffz' | 'custom';
 export type BadgeScope = 'native' | 'channel' | 'global' | 'user' | 'custom';
 
+export interface IdentityFetchOptions {
+  signal?: AbortSignal;
+  bypassCache?: boolean;
+  cacheTtlMs?: number;
+}
+
 export interface BadgeImage {
   url: string;
   width?: number;
@@ -21,6 +27,7 @@ export interface Badge {
   slot?: number;
   replaces?: string;
   color?: string;
+  raw?: unknown;
 }
 
 export interface BadgeRef {
@@ -68,6 +75,7 @@ export interface NamePaint {
   shape?: string;
   imageUrl?: string;
   stops?: NamePaintStop[];
+  raw?: unknown;
 }
 
 export interface UserCosmetics {

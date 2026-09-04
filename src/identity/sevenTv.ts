@@ -1,9 +1,9 @@
 import { fetchJson, HttpError } from '../network/fetch';
-import type { ProviderOptions } from '../types/providers';
 import type {
   Badge,
   BadgeImage,
   EnrichmentResult,
+  IdentityFetchOptions,
   NamePaint,
   NamePaintGradient,
   NamePaintShadow,
@@ -11,8 +11,15 @@ import type {
   UserCosmetics,
 } from '../types/identity';
 
+export const SEVEN_TV_COSMETICS_CACHE_MS = 5 * 60 * 1000;
+
 const API = 'https://7tv.io/v3';
 const GQL = `${API}/gql`;
+
+interface CacheEntry {
+  expiresAt: number;
+  value: UserCosmetics | null;
+}
 
 interface SevenTvStyle {
   paint_id?: string | null;
@@ -111,8 +118,20 @@ const COSMETICS_QUERY = `query ChatCoreCosmetics($list: [ObjectID!]) {
   }
 }`;
 
+const cache = new Map<string, CacheEntry>();
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : '7TV cosmetics lookup failed';
 const normalizeUrl = (url: string): string => url.startsWith('//') ? `https:${url}` : url;
+const ttlFor = (options: IdentityFetchOptions): number => options.cacheTtlMs ?? SEVEN_TV_COSMETICS_CACHE_MS;
+
+export function clearSevenTvUserCosmeticsCache(twitchUserId?: string): void {
+  if (twitchUserId) cache.delete(twitchUserId);
+  else cache.clear();
+}
+
+const cacheValue = (twitchUserId: string, value: UserCosmetics | null, options: IdentityFetchOptions): void => {
+  const ttl = ttlFor(options);
+  if (ttl > 0) cache.set(twitchUserId, { value, expiresAt: Date.now() + ttl });
+};
 
 const mapStop = (stop: SevenTvPaintStop): NamePaintStop | null =>
   typeof stop.at === 'number' && typeof stop.color === 'number'
@@ -154,6 +173,7 @@ const mapPaint = (paint: SevenTvPaint | undefined): NamePaint | undefined => {
     shape: paint.shape,
     imageUrl: paint.image_url || undefined,
     stops: (paint.stops ?? []).map(mapStop).filter((stop): stop is NamePaintStop => stop !== null),
+    raw: paint,
   };
 };
 
@@ -181,13 +201,19 @@ const mapBadge = (badge: SevenTvBadge | undefined): Badge | undefined => {
     title: badge.tag,
     tooltip: badge.tooltip,
     images,
+    raw: badge,
   };
 };
 
 export async function fetchSevenTvUserCosmeticsDetailed(
   twitchUserId: string,
-  options: ProviderOptions = {},
+  options: IdentityFetchOptions = {},
 ): Promise<EnrichmentResult<UserCosmetics>> {
+  const cached = cache.get(twitchUserId);
+  if (!options.bypassCache && cached && cached.expiresAt > Date.now()) {
+    return { value: cached.value, ok: true };
+  }
+
   try {
     const connection = await fetchJson<SevenTvConnection>(
       `${API}/users/twitch/${encodeURIComponent(twitchUserId)}`,
@@ -199,7 +225,10 @@ export async function fetchSevenTvUserCosmeticsDetailed(
     const badgeId = style?.badge_id || undefined;
     const ids = [paintId, badgeId].filter((id): id is string => !!id);
 
-    if (ids.length === 0) return { value: null, ok: true };
+    if (ids.length === 0) {
+      cacheValue(twitchUserId, null, options);
+      return { value: null, ok: true };
+    }
 
     const response = await fetchJson<SevenTvCosmeticsResponse>(GQL, {
       signal: options.signal,
@@ -223,27 +252,28 @@ export async function fetchSevenTvUserCosmeticsDetailed(
     const badges = response.data?.cosmetics?.badges ?? [];
     const paint = mapPaint(paints.find((candidate) => candidate.id === paintId));
     const badge = mapBadge(badges.find((candidate) => candidate.id === badgeId));
-
-    return {
-      value: {
-        provider: '7tv',
-        userId: user?.id ?? connection.id,
-        username: user?.username ?? connection.username,
-        displayName: user?.display_name ?? connection.display_name,
-        namePaint: paint,
-        badges: badge ? [badge] : [],
-      },
-      ok: true,
+    const value: UserCosmetics = {
+      provider: '7tv',
+      userId: user?.id ?? connection.id,
+      username: user?.username ?? connection.username,
+      displayName: user?.display_name ?? connection.display_name,
+      namePaint: paint,
+      badges: badge ? [badge] : [],
     };
+    cacheValue(twitchUserId, value, options);
+    return { value, ok: true };
   } catch (error) {
-    if (error instanceof HttpError && error.status === 404) return { value: null, ok: true };
+    if (error instanceof HttpError && error.status === 404) {
+      cacheValue(twitchUserId, null, options);
+      return { value: null, ok: true };
+    }
     return { value: null, ok: false, error: errorMessage(error) };
   }
 }
 
 export async function fetchSevenTvUserCosmetics(
   twitchUserId: string,
-  options: ProviderOptions = {},
+  options: IdentityFetchOptions = {},
 ): Promise<UserCosmetics | null> {
   return (await fetchSevenTvUserCosmeticsDetailed(twitchUserId, options)).value;
 }

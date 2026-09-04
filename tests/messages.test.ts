@@ -16,7 +16,7 @@ describe('message fragments', () => {
 
     expect(parseMessageFragments('hi Kappaish there', { emotes })).toEqual([
       { type: 'text', text: 'hi ' },
-      { type: 'emote', text: 'Kappaish', emote: emotes.Kappaish, overlays: [] },
+      { type: 'emote', text: 'Kappaish', emote: emotes.Kappaish, overlays: [], modifiers: [] },
       { type: 'text', text: ' there' },
     ]);
   });
@@ -28,11 +28,11 @@ describe('message fragments', () => {
     };
 
     expect(parseMessageFragments('Base Hat', { emotes })).toEqual([
-      { type: 'emote', text: 'Base', emote: emotes.Base, overlays: [emotes.Hat] },
+      { type: 'emote', text: 'Base', emote: emotes.Base, overlays: [emotes.Hat], modifiers: [] },
     ]);
   });
 
-  it('drops hidden modifier emotes instead of rendering them', () => {
+  it('preserves hidden FFZ modifiers without rendering them as emotes', () => {
     const emotes: EmoteSet = {
       Base: { id: 'base', code: 'Base', provider: 'ffz', zeroWidth: false, url: 'https://cdn.example/base.webp' },
       Effect: {
@@ -42,8 +42,19 @@ describe('message fragments', () => {
     };
 
     expect(parseMessageFragments('Base Effect', { emotes })).toEqual([
-      { type: 'emote', text: 'Base', emote: emotes.Base, overlays: [] },
-      { type: 'text', text: ' ' },
+      { type: 'emote', text: 'Base', emote: emotes.Base, overlays: [], modifiers: [emotes.Effect] },
+    ]);
+  });
+
+  it('keeps an orphan hidden modifier as an explicit non-rendering fragment', () => {
+    const emotes: EmoteSet = {
+      Effect: {
+        id: 'effect', code: 'Effect', provider: 'ffz', zeroWidth: false,
+        modifier: 'hidden', url: 'https://cdn.example/effect.webp',
+      },
+    };
+    expect(parseMessageFragments('Effect', { emotes })).toEqual([
+      { type: 'modifier', text: 'Effect', emote: emotes.Effect },
     ]);
   });
 
@@ -55,6 +66,7 @@ describe('message fragments', () => {
       type: 'emote',
       text: 'Kappa',
       emote: { id: '25', provider: 'twitch' },
+      modifiers: [],
     });
   });
 });
