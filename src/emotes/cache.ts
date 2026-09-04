@@ -15,10 +15,12 @@ const getStorage = (): Storage | null => {
 };
 
 const get = (key: string): string | null => {
+  const memoryValue = memoryCache.get(key);
+  if (memoryValue !== undefined) return memoryValue;
   try {
-    return getStorage()?.getItem(key) ?? memoryCache.get(key) ?? null;
+    return getStorage()?.getItem(key) ?? null;
   } catch {
-    return memoryCache.get(key) ?? null;
+    return null;
   }
 };
 
