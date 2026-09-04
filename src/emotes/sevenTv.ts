@@ -1,6 +1,6 @@
 import type { EmoteCandidate } from '../types/emotes';
 import type { ProviderOptions, ProviderResult } from '../types/providers';
-import { fetchJson } from '../network/fetch';
+import { fetchJson, HttpError } from '../network/fetch';
 import { providerStatus } from '../types/providers';
 
 const API = 'https://7tv.io/v3';
@@ -60,20 +60,31 @@ export async function fetchChannelSevenTv(
   twitchUserId: string | null,
   options: ProviderOptions = {},
 ): Promise<ProviderResult> {
-  try {
-    const lookups = twitchUserId ? [twitchUserId, channelName] : [channelName];
-    for (const lookup of lookups) {
-      try {
-        const user = await fetchJson<{ emote_set?: { id?: string } }>(`${API}/users/twitch/${encodeURIComponent(lookup)}`, { signal: options.signal });
-        const setId = user.emote_set?.id;
-        if (setId) return load(`${API}/emote-sets/${encodeURIComponent(setId)}`, 'channel', options);
-      } catch (error) {
-        // A username fallback preserves compatibility with older 7TV account lookups.
-        if (options.signal?.aborted) throw error;
+  const lookups = twitchUserId ? [twitchUserId, channelName] : [channelName];
+  let lastRealError: unknown;
+
+  for (const lookup of lookups) {
+    try {
+      const user = await fetchJson<{ emote_set?: { id?: string } }>(
+        `${API}/users/twitch/${encodeURIComponent(lookup)}`,
+        { signal: options.signal },
+      );
+      const setId = user.emote_set?.id;
+      if (setId) return load(`${API}/emote-sets/${encodeURIComponent(setId)}`, 'channel', options);
+      return { candidates: [], status: providerStatus('7tv', 'channel', []) };
+    } catch (error) {
+      if (options.signal?.aborted) {
+        return { candidates: [], status: providerStatus('7tv', 'channel', [], error) };
       }
+      if (error instanceof HttpError && error.status === 404) {
+        continue;
+      }
+      lastRealError = error;
     }
-    return { candidates: [], status: providerStatus('7tv', 'channel', []) };
-  } catch (error) {
-    return { candidates: [], status: providerStatus('7tv', 'channel', [], error) };
   }
+
+  if (lastRealError !== undefined) {
+    return { candidates: [], status: providerStatus('7tv', 'channel', [], lastRealError) };
+  }
+  return { candidates: [], status: providerStatus('7tv', 'channel', []) };
 }
