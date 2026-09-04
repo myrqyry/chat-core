@@ -28,6 +28,29 @@ describe('fetchWithTimeout', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('does not retry an immediate zero-timeout abort', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn((_url: string, options?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      options?.signal?.addEventListener(
+        'abort',
+        () => reject(new DOMException('Aborted', 'AbortError')),
+        { once: true },
+      );
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const settled = fetchWithTimeout('https://example.com/immediate', {}, 0, 3).then(
+      () => ({ ok: true as const, error: undefined }),
+      (error: unknown) => ({ ok: false as const, error }),
+    );
+    await vi.advanceTimersByTimeAsync(0);
+
+    const result = await settled;
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatchObject({ name: 'AbortError' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects when the request exceeds its timeout', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn((_url: string, options?: RequestInit) => new Promise<Response>((_resolve, reject) => {

@@ -50,7 +50,12 @@ export async function fetchWithTimeout(
       lastError = new HttpError(response.status, url);
     } catch (error) {
       lastError = error;
-      if (callerSignal?.aborted) throw error;
+      if (
+        callerSignal?.aborted ||
+        (isAbortError(error) && controller.signal.aborted && timeoutMs <= 0)
+      ) {
+        throw error;
+      }
     } finally {
       clearTimeout(timer);
       callerSignal?.removeEventListener('abort', onAbort);
