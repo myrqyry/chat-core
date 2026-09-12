@@ -181,18 +181,23 @@ const normalizeNotification = (
   } : undefined;
 
   let type: ChatEvent['type'] = 'system';
-  if (['sub', 'resub', 'shared_chat_sub', 'shared_chat_resub'].includes(noticeType)) {
+  if ([
+    'sub',
+    'resub',
+    'gift_paid_upgrade',
+    'prime_paid_upgrade',
+    'shared_chat_sub',
+    'shared_chat_resub',
+    'shared_chat_gift_paid_upgrade',
+    'shared_chat_prime_paid_upgrade',
+  ].includes(noticeType)) {
     type = 'subscription';
   } else if ([
     'sub_gift',
     'community_sub_gift',
-    'gift_paid_upgrade',
-    'prime_paid_upgrade',
     'pay_it_forward',
     'shared_chat_sub_gift',
     'shared_chat_community_sub_gift',
-    'shared_chat_gift_paid_upgrade',
-    'shared_chat_prime_paid_upgrade',
     'shared_chat_pay_it_forward',
   ].includes(noticeType)) {
     type = 'gift-subscription';
