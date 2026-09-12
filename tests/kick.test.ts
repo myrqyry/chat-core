@@ -1,9 +1,48 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  createKickSocket,
   normalizeKickEvent,
   parseKickMessageContent,
   parseKickPusherFrame,
 } from '../src/index';
+
+class MockWebSocket {
+  static instances: MockWebSocket[] = [];
+
+  readonly url: string;
+  readonly sent: string[] = [];
+  closeCount = 0;
+
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+  onclose: ((event: CloseEvent) => void) | null = null;
+
+  constructor(url: string) {
+    this.url = url;
+    MockWebSocket.instances.push(this);
+  }
+
+  send(data: string): void {
+    this.sent.push(data);
+  }
+
+  close(): void {
+    this.closeCount += 1;
+  }
+
+  emitOpen(): void {
+    this.onopen?.({} as Event);
+  }
+
+  emitMessage(data: string): void {
+    this.onmessage?.({ data } as MessageEvent<unknown>);
+  }
+
+  emitClose(): void {
+    this.onclose?.({} as CloseEvent);
+  }
+}
 
 describe('Kick protocol', () => {
   it('parses supported Pusher events and ignores control or malformed frames', () => {
@@ -107,5 +146,91 @@ describe('Kick normalization', () => {
       timestamp: 123,
       data: { kind: 'host', host_username: 'hoster', number_viewers: 12 },
     });
+  });
+});
+
+describe('Kick socket lifecycle', () => {
+  beforeEach(() => {
+    MockWebSocket.instances = [];
+    vi.useFakeTimers();
+    vi.stubGlobal('WebSocket', MockWebSocket);
+    vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('waits for Pusher readiness and honors the negotiated activity timeout', () => {
+    const states: string[] = [];
+    const handle = createKickSocket(42, {
+      onStateChange: (state) => states.push(state),
+    });
+    const ws = MockWebSocket.instances[0];
+
+    ws.emitOpen();
+    expect(states).toEqual(['connecting']);
+    expect(ws.sent).toEqual([]);
+
+    ws.emitMessage(JSON.stringify({
+      event: 'pusher:connection_established',
+      data: JSON.stringify({ socket_id: '1.2', activity_timeout: 120 }),
+    }));
+    expect(JSON.parse(ws.sent[0])).toMatchObject({
+      event: 'pusher:subscribe',
+      data: { channel: 'chatrooms.42.v2' },
+    });
+
+    ws.emitMessage(JSON.stringify({
+      event: 'pusher_internal:subscription_succeeded',
+      data: '{}',
+    }));
+    expect(states.at(-1)).toBe('connected');
+
+    vi.advanceTimersByTime(95_000);
+    expect(ws.closeCount).toBe(0);
+
+    handle.close();
+  });
+
+  it('keeps exponential backoff across WebSocket opens until Pusher is usable', () => {
+    const handle = createKickSocket(42);
+
+    const first = MockWebSocket.instances[0];
+    first.emitOpen();
+    first.emitClose();
+
+    vi.advanceTimersByTime(999);
+    expect(MockWebSocket.instances).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    expect(MockWebSocket.instances).toHaveLength(2);
+
+    const second = MockWebSocket.instances[1];
+    second.emitOpen();
+    second.emitClose();
+
+    vi.advanceTimersByTime(1_000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    vi.advanceTimersByTime(1_000);
+    expect(MockWebSocket.instances).toHaveLength(3);
+
+    const third = MockWebSocket.instances[2];
+    third.emitOpen();
+    third.emitMessage(JSON.stringify({
+      event: 'pusher:connection_established',
+      data: JSON.stringify({ socket_id: '3.4', activity_timeout: 120 }),
+    }));
+    third.emitMessage(JSON.stringify({
+      event: 'pusher_internal:subscription_succeeded',
+      data: '{}',
+    }));
+    third.emitClose();
+
+    vi.advanceTimersByTime(1_000);
+    expect(MockWebSocket.instances).toHaveLength(4);
+
+    handle.close();
   });
 });
