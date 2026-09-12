@@ -148,14 +148,23 @@ const objectSubscription = (type: string, objectId: string): SevenTvSubscription
   condition: { object_id: objectId },
 });
 
+const EMOTE_SET_ASSIGNMENT_KEYS = new Set(['emote_set', 'emote_set_id']);
+
+const valueTouchesEmoteSetAssignment = (value: unknown): boolean => {
+  if (Array.isArray(value)) return value.some(valueTouchesEmoteSetAssignment);
+  const record = recordFrom(value);
+  if (!record) return false;
+  if (typeof record.key === 'string' && EMOTE_SET_ASSIGNMENT_KEYS.has(record.key)) return true;
+  return [...EMOTE_SET_ASSIGNMENT_KEYS].some((key) => key in record);
+};
+
 const userUpdateTouchesEmoteSetAssignment = (dispatch: SevenTvDispatch): boolean => {
   for (const field of dispatch.body.updated ?? []) {
     if (field.key !== 'connections') continue;
-    if (Array.isArray(field.value)) {
-      if (field.value.some((nested) => isRecord(nested) && nested.key === 'emote_set')) return true;
-    }
-    const value = recordFrom(field.value);
-    if (value && 'emote_set' in value) return true;
+    if (
+      valueTouchesEmoteSetAssignment(field.value) ||
+      valueTouchesEmoteSetAssignment(field.old_value)
+    ) return true;
   }
   return false;
 };
@@ -179,7 +188,9 @@ export async function connectSevenTvLive(
   const initial = await fetchSevenTvChannelSnapshot(options.platform, platformUserId, { signal: options.signal });
   if (options.signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
   if (!initial.status.ok) {
-    options.onError?.(new Error(initial.status.error ?? 'Initial 7TV channel lookup failed'));
+    const error = new Error(initial.status.error ?? 'Initial 7TV channel lookup failed');
+    options.onError?.(error);
+    throw error;
   }
 
   let stopped = false;
