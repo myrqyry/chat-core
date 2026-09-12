@@ -1,4 +1,4 @@
-import { parseMessageFragments } from '../../messages/parse';
+import { appendMessageFragments, parseMessageFragments } from '../../messages/parse';
 import type { ChatFragment } from '../../types/chat';
 import type { Emote, EmoteSet } from '../../types/emotes';
 import type { TwitchMessageFragmentPayload, TwitchNormalizedMessage } from './types';
@@ -27,44 +27,49 @@ const twitchEmote = (
   };
 };
 
-const fragmentFromTwitch = (
+const appendTwitchFragment = (
   fragment: TwitchMessageFragmentPayload,
   emotes: EmoteSet,
-): ChatFragment[] => {
+  normalized: ChatFragment[],
+): void => {
   if (fragment.type === 'emote' && fragment.emote?.id) {
-    return [{
+    normalized.push({
       type: 'emote',
       text: fragment.text,
       emote: twitchEmote(fragment.emote.id, fragment.text, fragment.emote.format),
       overlays: [],
       modifiers: [],
-    }];
+    });
+    return;
   }
 
   if (fragment.type === 'mention' && fragment.mention) {
-    return [{
+    normalized.push({
       type: 'mention',
       text: fragment.text,
       username: fragment.mention.user_login ?? fragment.mention.user_name,
       userId: fragment.mention.user_id,
-    }];
+    });
+    return;
   }
 
   if (fragment.type === 'cheermote' && fragment.cheermote) {
-    return [{
+    normalized.push({
       type: 'cheermote',
       text: fragment.text,
       bits: fragment.cheermote.bits ?? 0,
       prefix: fragment.cheermote.prefix,
       tier: fragment.cheermote.tier,
-    }];
+    });
+    return;
   }
 
   if (fragment.type === 'gif' && fragment.gif) {
-    return [{ type: 'unknown', text: fragment.text, raw: fragment }];
+    normalized.push({ type: 'unknown', text: fragment.text, raw: fragment });
+    return;
   }
 
-  return parseMessageFragments(fragment.text, { emotes });
+  appendMessageFragments(fragment.text, normalized, { emotes });
 };
 
 export function normalizeTwitchMessageFragments(
@@ -76,7 +81,8 @@ export function normalizeTwitchMessageFragments(
     return { text, fragments: parseMessageFragments(text, { emotes }) };
   }
 
-  const normalized = fragments.flatMap((fragment) => fragmentFromTwitch(fragment, emotes));
+  const normalized: ChatFragment[] = [];
+  for (const fragment of fragments) appendTwitchFragment(fragment, emotes, normalized);
   return { text, fragments: normalized };
 }
 
