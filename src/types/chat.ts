@@ -75,6 +75,14 @@ export type ChatFragment =
   | CheermoteFragment
   | UnknownFragment;
 
+export interface ChatMessageTraits {
+  messageType?: string;
+  highlighted?: boolean;
+  firstMessage?: boolean;
+  emoteOnly?: boolean;
+  customRewardId?: string;
+}
+
 export interface ChatMessage {
   id: string;
   platform: ChatPlatform;
@@ -85,6 +93,7 @@ export interface ChatMessage {
   fragments: ChatFragment[];
   timestamp: number;
   replyToMessageId?: string;
+  traits?: ChatMessageTraits;
   raw?: unknown;
 }
 

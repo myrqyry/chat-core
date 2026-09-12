@@ -32,6 +32,7 @@ export type {
   ChatEventType,
   ChatFragment,
   ChatMessage,
+  ChatMessageTraits,
   ChatPlatform,
   ChatUser,
   CheermoteFragment,
@@ -73,6 +74,7 @@ export { fetchChannelFfz, fetchGlobalFfz } from './emotes/ffz';
 export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader';
 export { CACHE_DURATION_MS } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
+
 export { resolveKickChannel } from './platforms/kick/channel';
 export type { ResolveKickChannelOptions } from './platforms/kick/channel';
 export { connectKickChat } from './platforms/kick/connect';
@@ -104,3 +106,40 @@ export type {
   KickUserBannedPayload,
   KickUserUnbannedPayload,
 } from './platforms/kick/types';
+
+export {
+  resolveTwitchChannel,
+  resolveTwitchEventSubAuth,
+  validateTwitchUserAccessToken,
+} from './platforms/twitch/auth';
+export { connectTwitchChat } from './platforms/twitch/connect';
+export {
+  isTwitchMessageEmoteOnly,
+  normalizeTwitchMessageFragments,
+} from './platforms/twitch/message';
+export { normalizeTwitchEventSubNotification } from './platforms/twitch/normalize';
+export { parseTwitchEventSubFrame } from './platforms/twitch/protocol';
+export { createTwitchEventSubSocket, twitchReconnectDelay } from './platforms/twitch/socket';
+export {
+  createTwitchEventSubSubscription,
+  DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
+  subscribeTwitchChat,
+} from './platforms/twitch/subscriptions';
+export type {
+  TwitchAuth,
+  TwitchChatConnection,
+  TwitchChatMessagePayload,
+  TwitchChatSubscriptionType,
+  TwitchConnectOptions,
+  TwitchEventSubEnvelope,
+  TwitchEventSubMetadata,
+  TwitchEventSubSession,
+  TwitchEventSubSocketHandle,
+  TwitchEventSubSocketOptions,
+  TwitchEventSubSubscription,
+  TwitchMessageFragmentPayload,
+  TwitchNormalizeContext,
+  TwitchNormalizedMessage,
+  TwitchResolvedChannel,
+  TwitchTokenValidation,
+} from './platforms/twitch/types';

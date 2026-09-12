@@ -87,16 +87,16 @@ export function twitchEmoteSpansFromTag(
   return spans.sort((a, b) => a.start - b.start || a.end - b.end);
 }
 
-export function parseMessageFragments(
+export function appendMessageFragments(
   text: string,
+  fragments: ChatFragment[],
   options: ParseMessageOptions = {},
-): ChatFragment[] {
+): void {
   const emotes = options.emotes ?? {};
   const nativeSpans = [...(options.nativeEmotes ?? [])]
     .filter((span) => span.start >= 0 && span.end >= span.start && span.start < text.length)
     .sort((a, b) => a.start - b.start || a.end - b.end);
 
-  const fragments: ChatFragment[] = [];
   let cursor = 0;
 
   for (const span of nativeSpans) {
@@ -115,5 +115,13 @@ export function parseMessageFragments(
   }
 
   if (cursor < text.length) parsePlainRange(text.slice(cursor), emotes, fragments);
+}
+
+export function parseMessageFragments(
+  text: string,
+  options: ParseMessageOptions = {},
+): ChatFragment[] {
+  const fragments: ChatFragment[] = [];
+  appendMessageFragments(text, fragments, options);
   return fragments;
 }
