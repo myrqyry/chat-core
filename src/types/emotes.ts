@@ -54,6 +54,8 @@ export interface EmoteFetchResult {
   providers: ProviderStatus[];
   fromCache: boolean;
   complete: boolean;
+  /** Provider candidates retained so live provider updates can re-run deterministic precedence. */
+  candidates?: EmoteCandidate[];
 }
 
 export interface EmoteFetchOptions {
