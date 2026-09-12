@@ -22,6 +22,22 @@ const socketUrl = (appKey: string, baseUrl: string): string => {
   return `${baseUrl.replace(/\/$/u, '')}/${appKey}?${params.toString()}`;
 };
 
+const parseActivityTimeoutMs = (data: unknown): number | null => {
+  let payload: unknown = data;
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return null;
+  const seconds = (payload as { activity_timeout?: unknown }).activity_timeout;
+  return typeof seconds === 'number' && Number.isFinite(seconds) && seconds > 0
+    ? seconds * 1000
+    : null;
+};
+
 export function createKickSocket(
   chatroomId: number,
   options: KickSocketOptions = {},
@@ -32,7 +48,7 @@ export function createKickSocket(
 
   const appKey = options.appKey ?? DEFAULT_APP_KEY;
   const baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-  const inactivityTimeoutMs = options.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_TIMEOUT_MS;
+  const configuredInactivityTimeoutMs = options.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_TIMEOUT_MS;
 
   let socket: WebSocket | null = null;
   let stopped = false;
@@ -40,6 +56,8 @@ export function createKickSocket(
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let watchdogTimer: ReturnType<typeof setInterval> | null = null;
   let lastActivityAt = Date.now();
+  let negotiatedActivityTimeoutMs: number | null = null;
+  let stableConnection = false;
 
   const clearReconnectTimer = () => {
     if (reconnectTimer !== null) {
@@ -56,22 +74,59 @@ export function createKickSocket(
     reconnectTimer = setTimeout(connect, delay);
   };
 
-  const handleMessage = (event: MessageEvent<unknown>) => {
+  const markStableConnection = (current: WebSocket) => {
+    if (stopped || socket !== current || stableConnection) return;
+    stableConnection = true;
+    reconnectAttempts = 0;
+    options.onStateChange?.('connected');
+    options.onOpen?.();
+  };
+
+  const handleMessage = (current: WebSocket, event: MessageEvent<unknown>) => {
+    if (stopped || socket !== current) return;
     lastActivityAt = Date.now();
     if (typeof event.data !== 'string') return;
 
-    if (event.data.startsWith('{"event":"pusher:')) {
-      try {
-        const control = JSON.parse(event.data) as { event?: string };
-        if (control.event === 'pusher:ping') {
-          socket?.send(JSON.stringify({ event: 'pusher:pong', data: {} }));
-          return;
-        }
-      } catch {
-        // Non-JSON data is handled by the normal parser below.
+    let envelope: { event?: unknown; data?: unknown } | null = null;
+    try {
+      const parsed = JSON.parse(event.data) as unknown;
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        envelope = parsed as { event?: unknown; data?: unknown };
+      }
+    } catch {
+      // Application frames are passed through to the normal parser below.
+    }
+
+    if (envelope && typeof envelope.event === 'string') {
+      if (envelope.event === 'pusher:connection_established') {
+        negotiatedActivityTimeoutMs = parseActivityTimeoutMs(envelope.data);
+        current.send(JSON.stringify({
+          event: 'pusher:subscribe',
+          data: { auth: '', channel: `chatrooms.${chatroomId}.v2` },
+        }));
+        return;
+      }
+
+      if (envelope.event === 'pusher:ping') {
+        current.send(JSON.stringify({ event: 'pusher:pong', data: {} }));
+        return;
+      }
+
+      if (envelope.event === 'pusher:pong') return;
+
+      if (envelope.event === 'pusher_internal:subscription_succeeded') {
+        markStableConnection(current);
+        return;
+      }
+
+      if (envelope.event.startsWith('pusher:') || envelope.event.startsWith('pusher_internal:')) {
+        return;
       }
     }
 
+    // If Kick starts delivering application events without a subscription-success
+    // control frame, the connection is demonstrably usable and may safely reset backoff.
+    markStableConnection(current);
     options.onMessage?.(event.data);
   };
 
@@ -79,6 +134,8 @@ export function createKickSocket(
     if (stopped) return;
     options.onStateChange?.(reconnectAttempts > 0 ? 'reconnecting' : 'connecting');
     lastActivityAt = Date.now();
+    negotiatedActivityTimeoutMs = null;
+    stableConnection = false;
 
     const next = new WebSocket(socketUrl(appKey, baseUrl));
     socket = next;
@@ -86,16 +143,11 @@ export function createKickSocket(
     next.onopen = () => {
       if (stopped || socket !== next) return;
       lastActivityAt = Date.now();
-      reconnectAttempts = 0;
-      next.send(JSON.stringify({
-        event: 'pusher:subscribe',
-        data: { auth: '', channel: `chatrooms.${chatroomId}.v2` },
-      }));
-      options.onStateChange?.('connected');
-      options.onOpen?.();
+      // Pusher readiness is established by pusher:connection_established and the
+      // channel subscription, not merely by the WebSocket HTTP upgrade succeeding.
     };
 
-    next.onmessage = handleMessage;
+    next.onmessage = (event) => handleMessage(next, event);
 
     next.onerror = () => {
       if (stopped || socket !== next) return;
@@ -116,10 +168,20 @@ export function createKickSocket(
 
   watchdogTimer = setInterval(() => {
     if (stopped || !socket) return;
+    // Pusher advertises activity_timeout in seconds. Never make our watchdog
+    // stricter than the negotiated interval, and leave one polling interval of
+    // grace so its own ping can arrive before we declare the connection stale.
+    const negotiatedFloor = negotiatedActivityTimeoutMs === null
+      ? 0
+      : negotiatedActivityTimeoutMs + WATCHDOG_INTERVAL_MS;
+    const inactivityTimeoutMs = Math.max(configuredInactivityTimeoutMs, negotiatedFloor);
     if (Date.now() - lastActivityAt <= inactivityTimeoutMs) return;
     options.onError?.(new Error(`No Kick chat activity for ${inactivityTimeoutMs}ms; reconnecting`));
     socket.close();
-  }, Math.min(WATCHDOG_INTERVAL_MS, Math.max(Math.floor(inactivityTimeoutMs / 3), 1)));
+  }, Math.min(
+    WATCHDOG_INTERVAL_MS,
+    Math.max(Math.floor(configuredInactivityTimeoutMs / 3), 1),
+  ));
 
   connect();
 
