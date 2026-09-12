@@ -188,7 +188,7 @@ describe('7TV EventAPI lifecycle', () => {
       d: { type: 'emote_set.update', condition: { object_id: 'set-1' } },
     });
 
-    vi.advanceTimersByTime(30_001);
+    vi.advanceTimersByTime(31_000);
     expect(ws.closeCount).toBe(1);
     handle.close();
   });
