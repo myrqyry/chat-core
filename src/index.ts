@@ -73,3 +73,34 @@ export { fetchChannelFfz, fetchGlobalFfz } from './emotes/ffz';
 export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader';
 export { CACHE_DURATION_MS } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
+export { resolveKickChannel } from './platforms/kick/channel';
+export type { ResolveKickChannelOptions } from './platforms/kick/channel';
+export { connectKickChat } from './platforms/kick/connect';
+export { kickEmoteUrl, parseKickMessageContent } from './platforms/kick/emotes';
+export type { ParsedKickMessageContent } from './platforms/kick/emotes';
+export { normalizeKickEvent } from './platforms/kick/normalize';
+export { parseKickPusherFrame } from './platforms/kick/protocol';
+export { createKickSocket, kickReconnectDelay } from './platforms/kick/socket';
+export type {
+  KickChannelInfo,
+  KickChatConnection,
+  KickChatMessagePayload,
+  KickConnectOptions,
+  KickGiftedSubscriptionsPayload,
+  KickMessageDeletedPayload,
+  KickNormalizeContext,
+  KickPinnedMessagePayload,
+  KickPollDeletePayload,
+  KickPollUpdatePayload,
+  KickProtocolDataByType,
+  KickProtocolEvent,
+  KickResolvedChannel,
+  KickSender,
+  KickSenderIdentity,
+  KickSocketHandle,
+  KickSocketOptions,
+  KickStreamHostPayload,
+  KickSubscriptionPayload,
+  KickUserBannedPayload,
+  KickUserUnbannedPayload,
+} from './platforms/kick/types';
