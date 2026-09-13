@@ -6,6 +6,7 @@ import {
   createTestMessageEvent,
   deserializeChatEvent,
   deserializeChatEvents,
+  isChatEvent,
   replayChatEvent,
   serializeChatEvent,
 } from '../src/index';
@@ -85,5 +86,63 @@ describe('chat event test and replay helpers', () => {
     }))).toThrow(TypeError);
 
     expect(() => deserializeChatEvents('{}')).toThrow(TypeError);
+  });
+
+  it('rejects malformed optional ChatEvent fields before narrowing', () => {
+    const envelope = {
+      type: 'message',
+      platform: 'twitch',
+      timestamp: 0,
+    } as const;
+
+    expect(isChatEvent({ ...envelope, channelId: 123 })).toBe(false);
+    expect(isChatEvent({ ...envelope, channelName: null })).toBe(false);
+    expect(isChatEvent({ ...envelope, user: {} })).toBe(false);
+    expect(isChatEvent({ ...envelope, user: {
+      platform: 'twitch',
+      username: 'tester',
+      roles: [123],
+    } })).toBe(false);
+    expect(isChatEvent({ ...envelope, message: {} })).toBe(false);
+
+    expect(() => deserializeChatEvent(JSON.stringify({
+      ...envelope,
+      message: {},
+    }))).toThrow(TypeError);
+  });
+
+  it('validates nested message fields while leaving data and raw unknown', () => {
+    const validMessage = {
+      id: 'message-1',
+      platform: 'twitch',
+      user: { platform: 'twitch', username: 'tester' },
+      text: 'hello',
+      fragments: [{ type: 'text', text: 'hello' }],
+      timestamp: 0,
+    };
+
+    expect(isChatEvent({
+      type: 'message',
+      platform: 'twitch',
+      timestamp: 0,
+      message: validMessage,
+      data: { applicationOwned: ['anything'] },
+      raw: ['provider', { payload: true }],
+    })).toBe(true);
+
+    expect(isChatEvent({
+      type: 'message',
+      platform: 'twitch',
+      timestamp: 0,
+      message: {
+        ...validMessage,
+        fragments: [{
+          type: 'media',
+          text: 'gif',
+          mediaType: 'gif',
+          url: 123,
+        }],
+      },
+    })).toBe(false);
   });
 });
