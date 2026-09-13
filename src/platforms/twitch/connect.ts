@@ -96,6 +96,7 @@ export async function connectTwitchChat(options: TwitchConnectOptions): Promise<
     if (!acceptMessage(envelope.metadata.message_id)) return;
     const context = {
       emotes: options.getEmotes?.() ?? options.emotes,
+      getUserEmotes: options.getUserEmotes,
       cheermotes: currentCheermotes(),
     };
     const event = normalizeTwitchEventSubNotification(envelope, context)
