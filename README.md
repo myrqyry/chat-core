@@ -1,11 +1,12 @@
 # Chat core
 
-`@myrqyry/chat-core` provides framework-neutral Twitch and third-party emote
-discovery for the Noita and Sketchy overlays. It owns provider parsing,
-precedence, bounded network requests, cache records, shared in-flight requests,
-and live provider state. Applications keep their own rendering models.
+`@myrqyry/chat-core` is the framework-neutral livestream chat substrate shared by
+the Noita and Sketchy overlays. It owns native and third-party emote discovery,
+message fragments, identity metadata, normalized chat events, platform
+connection lifecycle, and live provider state while applications keep their own
+rendering models.
 
-## Use the loader
+## Emote loader
 
 Use the convenience API when the application only needs the merged emote set:
 
@@ -43,8 +44,8 @@ for the full cache lifetime.
 ## Live 7TV updates
 
 `connectSevenTvLive` keeps a channel's 7TV state current without polling. It
-uses the 7TV V3 EventAPI heartbeat/session protocol, reconnects with
-backoff, re-subscribes deterministically after each fresh HELLO, and applies
+uses the 7TV V3 EventAPI heartbeat/session protocol, reconnects with backoff,
+re-subscribes deterministically after each fresh HELLO, and applies
 `emote_set.update` add/rename/remove changes incrementally.
 
 ```ts
@@ -82,6 +83,52 @@ current emote set means that the emote is actually configured as zero-width.
 The base emote metadata's zero-width flag is only a recommendation and is not
 used to force overlay behavior.
 
+## Twitch EventSub chat
+
+`connectTwitchChat()` uses Twitch's current EventSub WebSocket transport rather
+than `tmi.js`. Supply a **user access token** with `user:read:chat` at runtime;
+do not commit the token to an application bundle or repository.
+
+```ts
+import { connectTwitchChat } from '@myrqyry/chat-core';
+
+const connection = await connectTwitchChat({
+  channel: 'ExampleChannel',
+  accessToken: twitchUserAccessToken,
+  // clientId and userId are optional: chat-core validates the token and can
+  // derive both. Supplying them adds mismatch checks.
+  clientId: twitchClientId,
+  userId: twitchUserId,
+  onEvent: (event) => {
+    renderChatEvent(event);
+  },
+  onStateChange: (state) => {
+    console.log('twitch chat:', state);
+  },
+});
+
+connection.close();
+```
+
+The default subscription set covers chat messages, message deletion, chat
+notifications (subs/gifts/raids/etc.), chat settings, full chat clears, and
+per-user message clears. EventSub duplicate deliveries are suppressed by
+`message_id`. Server-directed reconnect URLs are handled as handoffs so the old
+socket stays alive until Twitch welcomes the replacement connection.
+
+Message normalization preserves Twitch native emotes, mentions, Cheermotes,
+badges, replies, and useful message traits such as highlighted messages,
+first-time user intros, emote-only messages, and custom reward IDs. Unrecognized
+or richer Twitch payloads remain available in `raw` rather than being
+misrepresented as another event type.
+
+## Kick chat
+
+`connectKickChat()` provides a browser-native Kick transport without pulling
+Node-oriented `ws` or Axios dependencies into the package. It normalizes Kick
+messages and native emotes into the same `ChatEvent` and `ChatMessage`
+contracts used by Twitch.
+
 ## Precedence
 
 Provider adapters return scoped candidates. The registry resolves collisions in
@@ -103,12 +150,13 @@ pnpm typecheck
 pnpm test
 ```
 
-`chat-core` now lives in its own Git repository. The Noita and Sketchy overlays
-currently consume a pinned Git commit of this package, so application dependency
-pins must be advanced deliberately after a verified chat-core change lands.
+`chat-core` lives in its own Git repository. The Noita and Sketchy overlays
+consume pinned Git commits of this package, so application dependency pins must
+be advanced deliberately after a verified chat-core change lands.
 
 ## Next steps
 
 Later shared work can cover per-emote provider override flags, personal 7TV
-emote entitlements, richer normalized message contracts, and processed-asset
-caching.
+emote entitlements, additional authenticated Twitch moderation events,
+processed-asset caching, and platform-specific write/send APIs without forcing
+those concerns into read-only overlay consumers.
