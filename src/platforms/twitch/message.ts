@@ -85,13 +85,18 @@ export function normalizeTwitchMessageFragments(
   fragments: TwitchMessageFragmentPayload[] | undefined,
   emotes: EmoteSet = {},
   cheermotes?: TwitchCheermoteSet,
+  localEmotes: EmoteSet = {},
 ): TwitchNormalizedMessage {
+  // Sender-local emotes (for example 7TV personal emotes) intentionally win
+  // over channel/global third-party candidates. Native Twitch fragments still
+  // bypass this map and remain authoritative for ranges Twitch marked native.
+  const resolvedEmotes: EmoteSet = { ...emotes, ...localEmotes };
   if (!fragments?.length) {
-    return { text, fragments: parseMessageFragments(text, { emotes }) };
+    return { text, fragments: parseMessageFragments(text, { emotes: resolvedEmotes }) };
   }
 
   const normalized: ChatFragment[] = [];
-  for (const fragment of fragments) appendTwitchFragment(fragment, emotes, cheermotes, normalized);
+  for (const fragment of fragments) appendTwitchFragment(fragment, resolvedEmotes, cheermotes, normalized);
   return { text, fragments: normalized };
 }
 

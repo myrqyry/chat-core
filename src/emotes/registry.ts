@@ -32,6 +32,35 @@ const isValidUrl = (url: string): boolean => {
   }
 };
 
+const sevenTvOverrides = (sevenTv: EmoteCandidate, other: EmoteCandidate): boolean => {
+  if (sevenTv.provider !== '7tv') return false;
+  const overrides = sevenTv.overrides;
+  if (!overrides) return false;
+
+  if (other.provider === 'twitch') {
+    if (other.scope === 'global') return overrides.twitchGlobal === true;
+    if (other.scope === 'channel' || other.scope === 'user') return overrides.twitchSubscriber === true;
+    return false;
+  }
+  if (other.provider === 'bttv') return overrides.betterTtv === true;
+  if (other.provider === 'ffz') return overrides.frankerFaceZ === true;
+  return false;
+};
+
+const candidateWins = (
+  candidate: EmoteCandidate,
+  previous: EmoteCandidate,
+  providerPriority: Record<EmoteProvider, number>,
+  scopePriority: Record<EmoteScope, number>,
+): boolean => {
+  if (sevenTvOverrides(candidate, previous)) return true;
+  if (sevenTvOverrides(previous, candidate)) return false;
+
+  const score = providerPriority[candidate.provider] + scopePriority[candidate.scope];
+  const previousScore = providerPriority[previous.provider] + scopePriority[previous.scope];
+  return score > previousScore;
+};
+
 export const mergeCandidates = (
   candidates: EmoteCandidate[],
   options: MergeCandidatesOptions = {},
@@ -39,17 +68,16 @@ export const mergeCandidates = (
   const providerPriority = { ...DEFAULT_PROVIDER_PRIORITY, ...options.providerPriority };
   const scopePriority = { ...DEFAULT_SCOPE_PRIORITY, ...options.scopePriority };
   const result: EmoteSet = {};
-  const winners = new Map<string, number>();
+  const winners = new Map<string, EmoteCandidate>();
 
   for (const candidate of candidates) {
     if (!candidate.code || !isValidUrl(candidate.url)) continue;
-    const score = providerPriority[candidate.provider] + scopePriority[candidate.scope];
-    const previousScore = winners.get(candidate.code);
-    if (previousScore !== undefined && previousScore >= score) continue;
+    const previous = winners.get(candidate.code);
+    if (previous && !candidateWins(candidate, previous, providerPriority, scopePriority)) continue;
 
     const { scope: _scope, ...emote } = candidate;
     result[candidate.code] = emote;
-    winners.set(candidate.code, score);
+    winners.set(candidate.code, candidate);
   }
 
   return result;

@@ -1,6 +1,7 @@
 import type { EmoteCandidate, EmoteSet } from '../types/emotes';
 import type { ChatConnectionState } from '../types/chat';
 import type { SevenTvPlatform } from '../emotes/sevenTv';
+import type { SevenTvEntitlement, SevenTvEntitlementApplyResult } from './entitlements';
 
 export interface SevenTvChangeField {
   key?: string;
@@ -15,6 +16,7 @@ export interface SevenTvChangeMap {
   kind?: number;
   contextual?: boolean;
   actor?: unknown;
+  object?: unknown;
   added?: SevenTvChangeField[];
   updated?: SevenTvChangeField[];
   removed?: SevenTvChangeField[];
@@ -69,6 +71,11 @@ export interface SevenTvEmoteSetPatchResult {
   removed: string[];
 }
 
+export interface SevenTvEntitlementChangeInfo extends SevenTvEntitlementApplyResult {
+  dispatch: SevenTvDispatch;
+  entitlements: SevenTvEntitlement[];
+}
+
 export interface SevenTvLiveConnectOptions {
   platform: SevenTvPlatform;
   platformUserId: string;
@@ -78,6 +85,7 @@ export interface SevenTvLiveConnectOptions {
     emotes: EmoteSet,
     info: { reason: 'dispatch' | 'reassigned'; dispatch?: SevenTvDispatch; emoteSetId?: string; candidates: EmoteCandidate[] },
   ) => void;
+  onEntitlementsChange?: (info: SevenTvEntitlementChangeInfo) => void;
   onCosmeticsInvalidated?: (dispatch: SevenTvDispatch) => void;
   onStateChange?: (state: ChatConnectionState) => void;
   onError?: (error: Error) => void;
@@ -91,5 +99,8 @@ export interface SevenTvLiveConnection {
   emoteSetId?: string;
   emotes: () => EmoteSet;
   candidates: () => EmoteCandidate[];
+  entitlements: (platformUserId?: string) => SevenTvEntitlement[];
+  personalEmotes: (platformUserId: string) => EmoteSet;
+  personalCandidates: (platformUserId: string) => EmoteCandidate[];
   close: () => void;
 }

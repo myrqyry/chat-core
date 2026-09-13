@@ -1,6 +1,6 @@
 import type { EmoteFetchResult } from '../types/emotes';
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_PREFIX = `chat-core-emotes-${CACHE_VERSION}-`;
 export const CACHE_DURATION_MS = 5 * 60 * 1000;
 

@@ -1,4 +1,4 @@
-import type { Emote, EmoteCandidate, EmoteSet } from '../types/emotes';
+import type { Emote, EmoteCandidate, EmoteSet, EmoteScope } from '../types/emotes';
 import {
   fetchSevenTvChannelSnapshot,
   sevenTvCandidateFromActiveEmote,
@@ -6,6 +6,10 @@ import {
 } from '../emotes/sevenTv';
 import { clearSevenTvUserCosmeticsCache } from '../identity/sevenTv';
 import { clearCachedEmotes } from '../emotes/cache';
+import {
+  SevenTvEntitlementStore,
+  sevenTvEntitlementsFromDispatch,
+} from './entitlements';
 import { createSevenTvEventSocket } from './socket';
 import type {
   SevenTvChangeField,
@@ -58,8 +62,10 @@ const codeFromRecord = (value: Record<string, unknown> | null): string | undefin
 const idFromRecord = (value: Record<string, unknown> | null): string | undefined =>
   value && typeof value.id === 'string' ? value.id : undefined;
 
-const candidateFromRecord = (value: Record<string, unknown>): EmoteCandidate | null =>
-  sevenTvCandidateFromActiveEmote(value as SevenTvActiveEmote, 'channel');
+const candidateFromRecord = (
+  value: Record<string, unknown>,
+  scope: Extract<EmoteScope, 'channel' | 'global' | 'user'>,
+): EmoteCandidate | null => sevenTvCandidateFromActiveEmote(value as SevenTvActiveEmote, scope);
 
 const addCandidate = (
   next: EmoteSet,
@@ -77,11 +83,12 @@ const applyPushed = (
   field: SevenTvChangeField,
   added: string[],
   updated: string[],
+  scope: Extract<EmoteScope, 'channel' | 'global' | 'user'>,
 ): void => {
   if (field.key !== 'emotes') return;
   const value = recordFrom(field.value);
   if (!value) return;
-  const candidate = candidateFromRecord(value);
+  const candidate = candidateFromRecord(value, scope);
   if (candidate) addCandidate(next, candidate, added, updated);
 };
 
@@ -100,6 +107,7 @@ const applyUpdated = (
   updated: string[],
   added: string[],
   removed: string[],
+  scope: Extract<EmoteScope, 'channel' | 'global' | 'user'>,
 ): void => {
   if (field.key !== 'emotes') return;
   const oldValue = recordFrom(field.old_value);
@@ -110,7 +118,7 @@ const applyUpdated = (
   const existing = oldCode ? next[oldCode] : undefined;
   const existingRaw = recordFrom(existing?.raw) ?? {};
   const merged = deepMerge(deepMerge(existingRaw, oldValue ?? {}), value);
-  const candidate = candidateFromRecord(merged);
+  const candidate = candidateFromRecord(merged, scope);
   if (!candidate) return;
 
   if (oldCode && oldCode !== candidate.code && next[oldCode]) {
@@ -123,6 +131,7 @@ const applyUpdated = (
 export function applySevenTvEmoteSetDispatch(
   emotes: EmoteSet,
   dispatch: SevenTvDispatch,
+  scope: Extract<EmoteScope, 'channel' | 'global' | 'user'> = 'channel',
 ): SevenTvEmoteSetPatchResult {
   if (dispatch.type !== 'emote_set.update') {
     return { emotes, changed: false, added: [], updated: [], removed: [] };
@@ -133,9 +142,9 @@ export function applySevenTvEmoteSetDispatch(
   const updated: string[] = [];
   const removed: string[] = [];
 
-  for (const field of dispatch.body.pushed ?? []) applyPushed(next, field, added, updated);
-  for (const field of dispatch.body.added ?? []) applyPushed(next, field, added, updated);
-  for (const field of dispatch.body.updated ?? []) applyUpdated(next, field, updated, added, removed);
+  for (const field of dispatch.body.pushed ?? []) applyPushed(next, field, added, updated, scope);
+  for (const field of dispatch.body.added ?? []) applyPushed(next, field, added, updated, scope);
+  for (const field of dispatch.body.updated ?? []) applyUpdated(next, field, updated, added, removed, scope);
   for (const field of dispatch.body.pulled ?? []) applyPulled(next, field, removed);
   for (const field of dispatch.body.removed ?? []) applyPulled(next, field, removed);
 
@@ -199,6 +208,9 @@ export async function connectSevenTvLive(
   let currentCandidates = [...initial.candidates];
   let currentEmotes = emoteSetFromCandidates(currentCandidates);
   let refreshGeneration = 0;
+  const entitlementStore = new SevenTvEntitlementStore({ platform: options.platform, signal: options.signal });
+  const personalSetSubscriptions = new Set<string>();
+  const personalSetQueues = new Map<string, Promise<void>>();
 
   const subscriptions: SevenTvSubscription[] = [
     channelSubscription('cosmetic.*', options.platform, platformUserId),
@@ -215,14 +227,29 @@ export async function connectSevenTvLive(
     onDispatch: (dispatch) => {
       if (stopped) return;
 
-      if (dispatch.type === 'emote_set.update' && dispatch.body.id === emoteSetId) {
-        const patch = applySevenTvEmoteSetDispatch(currentEmotes, dispatch);
-        if (!patch.changed) return;
-        currentEmotes = patch.emotes;
-        currentCandidates = Object.values(currentEmotes).map((emote) => ({ ...emote, scope: 'channel' as const }));
-        if (options.cacheChannelName) clearCachedEmotes(options.cacheChannelName);
-        options.onEmoteSetChange?.(currentEmotes, { reason: 'dispatch', dispatch, emoteSetId, candidates: currentCandidates });
-        return;
+      if (dispatch.type === 'emote_set.update') {
+        let handledChannelSet = false;
+        if (dispatch.body.id === emoteSetId) {
+          const patch = applySevenTvEmoteSetDispatch(currentEmotes, dispatch, 'channel');
+          if (patch.changed) {
+            currentEmotes = patch.emotes;
+            currentCandidates = Object.values(currentEmotes).map((emote) => ({ ...emote, scope: 'channel' as const }));
+            if (options.cacheChannelName) clearCachedEmotes(options.cacheChannelName);
+            options.onEmoteSetChange?.(currentEmotes, {
+              reason: 'dispatch',
+              dispatch,
+              emoteSetId,
+              candidates: currentCandidates,
+            });
+          }
+          handledChannelSet = true;
+        }
+
+        const personalSetId = typeof dispatch.body.id === 'string' ? dispatch.body.id : undefined;
+        if (personalSetId && entitlementStore.hasEmoteSetReference(personalSetId)) {
+          queuePersonalSetDispatch(personalSetId, dispatch);
+        }
+        if (handledChannelSet) return;
       }
 
       if (
@@ -234,12 +261,91 @@ export async function connectSevenTvLive(
         return;
       }
 
-      if (dispatch.type.startsWith('cosmetic.') || dispatch.type.startsWith('entitlement.')) {
+      if (dispatch.type.startsWith('entitlement.')) {
+        clearSevenTvUserCosmeticsCache();
+        options.onCosmeticsInvalidated?.(dispatch);
+        void handleEntitlementDispatch(dispatch);
+        return;
+      }
+
+      if (dispatch.type.startsWith('cosmetic.')) {
         clearSevenTvUserCosmeticsCache();
         options.onCosmeticsInvalidated?.(dispatch);
       }
     },
   });
+
+  const emitPersonalSetUpdate = (dispatch: SevenTvDispatch): void => {
+    options.onEntitlementsChange?.({
+      dispatch,
+      changed: true,
+      granted: [],
+      revoked: [],
+      addedEmoteSetIds: [],
+      removedEmoteSetIds: [],
+      resetUserIds: [],
+      loadErrors: [],
+      entitlements: entitlementStore.list(),
+    });
+  };
+
+  const handlePersonalSetDispatch = async (emoteSetIdToUpdate: string, dispatch: SevenTvDispatch): Promise<void> => {
+    try {
+      let candidates = entitlementStore.emoteSetCandidates(emoteSetIdToUpdate);
+      if (!candidates.length) candidates = await entitlementStore.refreshEmoteSet(emoteSetIdToUpdate);
+      if (stopped || !entitlementStore.hasEmoteSetReference(emoteSetIdToUpdate)) return;
+      const current = emoteSetFromCandidates(candidates);
+      const patch = applySevenTvEmoteSetDispatch(current, dispatch, 'user');
+      if (!patch.changed) return;
+      const nextCandidates = Object.values(patch.emotes).map((emote) => ({ ...emote, scope: 'user' as const }));
+      entitlementStore.replaceEmoteSetCandidates(emoteSetIdToUpdate, nextCandidates);
+      emitPersonalSetUpdate(dispatch);
+    } catch (error) {
+      if (stopped || options.signal?.aborted) return;
+      options.onError?.(error instanceof Error ? error : new Error('7TV personal emote-set update failed'));
+    }
+  };
+
+  function queuePersonalSetDispatch(emoteSetIdToUpdate: string, dispatch: SevenTvDispatch): void {
+    const previous = personalSetQueues.get(emoteSetIdToUpdate) ?? Promise.resolve();
+    const next = previous.then(() => handlePersonalSetDispatch(emoteSetIdToUpdate, dispatch));
+    personalSetQueues.set(emoteSetIdToUpdate, next);
+    void next.finally(() => {
+      if (personalSetQueues.get(emoteSetIdToUpdate) === next) personalSetQueues.delete(emoteSetIdToUpdate);
+    });
+  }
+
+  const handleEntitlementDispatch = async (dispatch: SevenTvDispatch): Promise<void> => {
+    // Install new personal-set subscriptions immediately, before loading their
+    // snapshot, so an update cannot slip through the network fetch window.
+    if (dispatch.type === 'entitlement.create') {
+      const incoming = sevenTvEntitlementsFromDispatch(dispatch, options.platform);
+      for (const entitlement of incoming) {
+        if (entitlement.kind !== 'EMOTE_SET' || personalSetSubscriptions.has(entitlement.refId)) continue;
+        personalSetSubscriptions.add(entitlement.refId);
+        if (entitlement.refId !== emoteSetId) socket.subscribe(objectSubscription('emote_set.update', entitlement.refId));
+      }
+    }
+
+    const result = await entitlementStore.applyDispatch(dispatch);
+    if (stopped) return;
+
+    for (const emoteSetIdToRemove of result.removedEmoteSetIds) {
+      if (!personalSetSubscriptions.delete(emoteSetIdToRemove)) continue;
+      if (emoteSetIdToRemove !== emoteSetId) {
+        socket.unsubscribe(objectSubscription('emote_set.update', emoteSetIdToRemove));
+      }
+    }
+    for (const loadError of result.loadErrors) options.onError?.(loadError.error);
+
+    if (result.changed || result.loadErrors.length) {
+      options.onEntitlementsChange?.({
+        ...result,
+        dispatch,
+        entitlements: entitlementStore.list(),
+      });
+    }
+  };
 
   const refreshSnapshot = async (dispatch?: SevenTvDispatch) => {
     const generation = ++refreshGeneration;
@@ -262,10 +368,10 @@ export async function connectSevenTvLive(
       if (sevenTvUserId && previousUserId !== sevenTvUserId) {
         socket.subscribe(objectSubscription('user.update', sevenTvUserId));
       }
-      if (previousSetId && previousSetId !== emoteSetId) {
+      if (previousSetId && previousSetId !== emoteSetId && !personalSetSubscriptions.has(previousSetId)) {
         socket.unsubscribe(objectSubscription('emote_set.update', previousSetId));
       }
-      if (emoteSetId && previousSetId !== emoteSetId) {
+      if (emoteSetId && previousSetId !== emoteSetId && !personalSetSubscriptions.has(emoteSetId)) {
         socket.subscribe(objectSubscription('emote_set.update', emoteSetId));
       }
 
@@ -273,7 +379,12 @@ export async function connectSevenTvLive(
         currentCandidates = [...refreshed.candidates];
         currentEmotes = emoteSetFromCandidates(currentCandidates);
         if (options.cacheChannelName) clearCachedEmotes(options.cacheChannelName);
-        options.onEmoteSetChange?.(currentEmotes, { reason: 'reassigned', dispatch, emoteSetId, candidates: currentCandidates });
+        options.onEmoteSetChange?.(currentEmotes, {
+          reason: 'reassigned',
+          dispatch,
+          emoteSetId,
+          candidates: currentCandidates,
+        });
       }
     } catch (error) {
       if (stopped || options.signal?.aborted) return;
@@ -289,10 +400,14 @@ export async function connectSevenTvLive(
     get emoteSetId() { return emoteSetId; },
     emotes: () => currentEmotes,
     candidates: () => currentCandidates,
+    entitlements: (userId) => entitlementStore.list(userId),
+    personalEmotes: (userId) => entitlementStore.personalEmotes(userId),
+    personalCandidates: (userId) => entitlementStore.personalCandidates(userId),
     close: () => {
       if (stopped) return;
       stopped = true;
       refreshGeneration += 1;
+      personalSetQueues.clear();
       options.signal?.removeEventListener('abort', onAbort);
       socket.close();
     },

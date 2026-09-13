@@ -124,6 +124,7 @@ const normalizeMessage = (
     event.message.fragments,
     context.emotes,
     context.cheermotes,
+    context.getUserEmotes?.(event.chatter_user_id),
   );
   const message: ChatMessage = {
     id: event.message_id,
@@ -191,6 +192,7 @@ const notificationMessage = (
     sourceFragments,
     context.emotes,
     context.cheermotes,
+    user.id ? context.getUserEmotes?.(user.id) : undefined,
   );
 
   return {
