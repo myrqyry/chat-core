@@ -61,6 +61,16 @@ export interface CheermoteFragment {
   emote?: Emote;
 }
 
+export interface MediaFragment {
+  type: 'media';
+  text: string;
+  mediaType: 'gif' | 'image';
+  id?: string;
+  url: string;
+  alt?: string;
+  raw?: unknown;
+}
+
 export interface UnknownFragment {
   type: 'unknown';
   text: string;
@@ -73,7 +83,37 @@ export type ChatFragment =
   | ModifierFragment
   | MentionFragment
   | CheermoteFragment
+  | MediaFragment
   | UnknownFragment;
+
+export interface ChatMessageTraits {
+  messageType?: string;
+  highlighted?: boolean;
+  firstMessage?: boolean;
+  emoteOnly?: boolean;
+  customRewardId?: string;
+}
+
+export interface ChatMessageReply {
+  parentMessageId?: string;
+  parentMessageBody?: string;
+  parentUserId?: string;
+  parentUsername?: string;
+  parentDisplayName?: string;
+  threadMessageId?: string;
+  threadUserId?: string;
+  threadUsername?: string;
+  threadDisplayName?: string;
+}
+
+export interface ChatMessageSource {
+  channelId?: string;
+  channelName?: string;
+  displayName?: string;
+  messageId?: string;
+  badgeRefs?: BadgeRef[];
+  sourceOnly?: boolean;
+}
 
 export interface ChatMessage {
   id: string;
@@ -85,6 +125,9 @@ export interface ChatMessage {
   fragments: ChatFragment[];
   timestamp: number;
   replyToMessageId?: string;
+  reply?: ChatMessageReply;
+  source?: ChatMessageSource;
+  traits?: ChatMessageTraits;
   raw?: unknown;
 }
 

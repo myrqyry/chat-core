@@ -32,10 +32,14 @@ export type {
   ChatEventType,
   ChatFragment,
   ChatMessage,
+  ChatMessageReply,
+  ChatMessageSource,
+  ChatMessageTraits,
   ChatPlatform,
   ChatUser,
   CheermoteFragment,
   EmoteFragment,
+  MediaFragment,
   MentionFragment,
   ModifierFragment,
   NativeEmoteSpan,
@@ -85,6 +89,7 @@ export { fetchChannelFfz, fetchGlobalFfz } from './emotes/ffz';
 export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader';
 export { CACHE_DURATION_MS, clearCachedEmotes } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
+
 export { resolveKickChannel } from './platforms/kick/channel';
 export type { ResolveKickChannelOptions } from './platforms/kick/channel';
 export { connectKickChat } from './platforms/kick/connect';
@@ -116,6 +121,7 @@ export type {
   KickUserBannedPayload,
   KickUserUnbannedPayload,
 } from './platforms/kick/types';
+
 export {
   applySevenTvEmoteSetDispatch,
   connectSevenTvLive,
@@ -146,3 +152,51 @@ export type {
   SevenTvLiveConnectOptions,
   SevenTvSubscription,
 } from './seventv/types';
+
+export {
+  resolveTwitchChannel,
+  resolveTwitchEventSubAuth,
+  validateTwitchUserAccessToken,
+} from './platforms/twitch/auth';
+export {
+  clearTwitchCheermoteCache,
+  fetchTwitchCheermotes,
+  resolveTwitchCheermote,
+  TWITCH_CHEERMOTE_CACHE_MS,
+} from './platforms/twitch/cheermotes';
+export { connectTwitchChat } from './platforms/twitch/connect';
+export {
+  isTwitchMessageEmoteOnly,
+  normalizeTwitchMessageFragments,
+} from './platforms/twitch/message';
+export { normalizeTwitchEventSubNotification } from './platforms/twitch/normalize';
+export { parseTwitchEventSubFrame } from './platforms/twitch/protocol';
+export { createTwitchEventSubSocket, twitchReconnectDelay } from './platforms/twitch/socket';
+export {
+  createTwitchEventSubSubscription,
+  DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
+  subscribeTwitchChat,
+} from './platforms/twitch/subscriptions';
+export type {
+  TwitchAuth,
+  TwitchChatConnection,
+  TwitchChatMessagePayload,
+  TwitchChatSubscriptionType,
+  TwitchCheermoteDefinition,
+  TwitchCheermoteImageTheme,
+  TwitchCheermoteSet,
+  TwitchCheermoteTier,
+  TwitchConnectOptions,
+  TwitchEventSubEnvelope,
+  TwitchEventSubMetadata,
+  TwitchEventSubSession,
+  TwitchEventSubSocketHandle,
+  TwitchEventSubSocketOptions,
+  TwitchEventSubSubscription,
+  TwitchMessageFragmentPayload,
+  TwitchNormalizeContext,
+  TwitchNormalizedMessage,
+  TwitchResolvedChannel,
+  TwitchSubscriptionStateChange,
+  TwitchTokenValidation,
+} from './platforms/twitch/types';
