@@ -6,6 +6,7 @@ export type {
   EmoteFetchResult,
   EmoteImage,
   EmoteModifier,
+  EmoteOverrideMetadata,
   EmoteProvider,
   EmoteScope,
   EmoteSet,
@@ -94,12 +95,16 @@ export {
   fetchGlobalSevenTv,
   fetchKickChannelSevenTv,
   fetchSevenTvChannelSnapshot,
+  fetchSevenTvEmoteSet,
   sevenTvCandidateFromActiveEmote,
   sevenTvCandidatesFromActiveEmotes,
+  sevenTvOverridesFromActiveEmote,
+  SEVEN_TV_ACTIVE_EMOTE_FLAGS,
 } from './emotes/sevenTv';
 export type {
   SevenTvActiveEmote,
   SevenTvChannelSnapshot,
+  SevenTvEmoteScope,
   SevenTvPlatform,
 } from './emotes/sevenTv';
 export { fetchChannelBttv, fetchGlobalBttv } from './emotes/bttv';
@@ -172,6 +177,17 @@ export type {
 } from './platforms/kick/types';
 
 export {
+  SevenTvEntitlementStore,
+  sevenTvEntitlementsFromDispatch,
+} from './seventv/entitlements';
+export type {
+  SevenTvEntitlement,
+  SevenTvEntitlementApplyResult,
+  SevenTvEntitlementKind,
+  SevenTvEntitlementLoadError,
+  SevenTvEntitlementStoreOptions,
+} from './seventv/entitlements';
+export {
   applySevenTvEmoteSetDispatch,
   connectSevenTvLive,
   replaceSevenTvChannelCandidates,
@@ -193,6 +209,7 @@ export type {
   SevenTvChangeMap,
   SevenTvDispatch,
   SevenTvEmoteSetPatchResult,
+  SevenTvEntitlementChangeInfo,
   SevenTvEventEnvelope,
   SevenTvEventSocketHandle,
   SevenTvEventSocketOptions,
