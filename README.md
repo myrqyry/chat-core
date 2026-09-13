@@ -68,6 +68,15 @@ preferences, animation/theme/format are matched first, then scale and intrinsic
 dimensions; stable source order breaks exact ties. Duplicate and unsafe URLs are
 removed. Applications still own image loading/retry timing and presentation.
 
+Twitch catalog/EventSub assets keep Twitch's known animation, theme, and scale
+metadata. Tag-derived native Twitch emotes use `/default/{theme}/{scale}` because
+IRC-style position tags do not disclose whether an emote is animated; their
+animation state intentionally remains unknown rather than being forced static.
+Cheermotes retain both light/dark and animated/static variants.
+
+See [Emote precedence and asset resolution](docs/emote-precedence-and-assets.md)
+for the full collision and asset-ranking contracts.
+
 ## Live 7TV updates
 
 `connectSevenTvLive` keeps a channel's 7TV state current without polling. It
@@ -145,8 +154,9 @@ can use `SevenTvEntitlementStore` directly instead.
 
 7TV active-emote provider override flags are preserved for Twitch global,
 Twitch subscriber/channel, BetterTTV, and FrankerFaceZ collisions. Explicit
-7TV override flags are applied before the normal provider/scope score, while
-the active zero-width flag remains independent from all override metadata.
+7TV override flags are applied before the normal scope-first/provider-within-scope
+comparison, while the active zero-width flag remains independent from all
+override metadata.
 
 See [7TV personal entitlements](docs/seventv-personal-entitlements.md) for the
 state model, reconciliation behavior, and flag mapping.
@@ -370,8 +380,8 @@ Provider adapters return scoped candidates. Normal precedence is lexicographic:
 scope is resolved first (`custom > native > user > channel > global > emoji`),
 then provider priority breaks ties inside that scope. This prevents a global
 emote from replacing a sender-local or channel emote merely because its provider
-has a higher provider score. Within a scope, Twitch/native platform emotes
-outrank 7TV, which outranks BTTV, which outranks FFZ by default.
+has a higher provider score. Within an equal scope, the default provider
+priority is `custom > twitch-cheer > twitch/kick/youtube > 7tv > bttv > ffz > emoji`.
 
 Two explicit exceptions are handled before the normal scope/provider comparison:
 
@@ -382,6 +392,8 @@ Two explicit exceptions are handled before the normal scope/provider comparison:
 
 The final `EmoteSet` contains no internal scope metadata. Applications should
 retain a non-empty last-known-good set when a refresh reports `complete: false`.
+For the complete precedence table, override exceptions, and renderer-facing asset
+selection rules, see [Emote precedence and asset resolution](docs/emote-precedence-and-assets.md).
 
 ## Development
 
