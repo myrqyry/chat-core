@@ -1,16 +1,26 @@
-import type { EmoteCandidate, EmoteImage } from '../types/emotes';
+import type { EmoteCandidate, EmoteImage, EmoteOverrideMetadata } from '../types/emotes';
 import type { ProviderOptions, ProviderResult } from '../types/providers';
 import { fetchJson, HttpError } from '../network/fetch';
 import { providerStatus } from '../types/providers';
 
 const API = 'https://7tv.io/v3';
-const ACTIVE_EMOTE_ZERO_WIDTH = 1 << 0;
+
+export const SEVEN_TV_ACTIVE_EMOTE_FLAGS = {
+  zeroWidth: 1 << 0,
+  pending: 1 << 8,
+  overrideTwitchGlobal: 1 << 16,
+  overrideTwitchSubscriber: 1 << 17,
+  overrideBetterTtv: 1 << 18,
+  overrideFrankerFaceZ: 1 << 19,
+} as const;
+
 const EMOTE_FLAG_SEXUAL = 1 << 16;
 const EMOTE_FLAG_EPILEPSY = 1 << 17;
 const EMOTE_FLAG_EDGY = 1 << 18;
 const EMOTE_FLAG_TWITCH_DISALLOWED = 1 << 24;
 
 export type SevenTvPlatform = 'twitch' | 'kick';
+export type SevenTvEmoteScope = 'channel' | 'global' | 'user';
 
 interface SevenTvHostFile {
   name?: string;
@@ -82,9 +92,19 @@ const bestImage = (images: EmoteImage[]): EmoteImage | undefined => {
     highest(images);
 };
 
+export function sevenTvOverridesFromActiveEmote(emote: SevenTvActiveEmote): EmoteOverrideMetadata {
+  const flags = emote.flags ?? 0;
+  return {
+    twitchGlobal: (flags & SEVEN_TV_ACTIVE_EMOTE_FLAGS.overrideTwitchGlobal) !== 0,
+    twitchSubscriber: (flags & SEVEN_TV_ACTIVE_EMOTE_FLAGS.overrideTwitchSubscriber) !== 0,
+    betterTtv: (flags & SEVEN_TV_ACTIVE_EMOTE_FLAGS.overrideBetterTtv) !== 0,
+    frankerFaceZ: (flags & SEVEN_TV_ACTIVE_EMOTE_FLAGS.overrideFrankerFaceZ) !== 0,
+  };
+}
+
 export function sevenTvCandidateFromActiveEmote(
   emote: SevenTvActiveEmote,
-  scope: 'channel' | 'global' | 'user' = 'channel',
+  scope: SevenTvEmoteScope = 'channel',
 ): EmoteCandidate | null {
   const id = emote.id;
   const code = emote.name;
@@ -97,7 +117,7 @@ export function sevenTvCandidateFromActiveEmote(
   // 7TV's active-emote ZeroWidth bit means this emote is configured as
   // zero-width in this set. data.flags bit 8 merely recommends zero-width and
   // must not override the set owner's choice.
-  const zeroWidth = ((emote.flags ?? 0) & ACTIVE_EMOTE_ZERO_WIDTH) !== 0;
+  const zeroWidth = ((emote.flags ?? 0) & SEVEN_TV_ACTIVE_EMOTE_FLAGS.zeroWidth) !== 0;
   const dataFlags = emote.data?.flags ?? 0;
   const content = {
     sexual: (dataFlags & EMOTE_FLAG_SEXUAL) !== 0,
@@ -119,17 +139,31 @@ export function sevenTvCandidateFromActiveEmote(
     images,
     ...(zeroWidth ? { modifier: 'overlay' as const } : {}),
     content,
+    overrides: sevenTvOverridesFromActiveEmote(emote),
     raw: emote,
   };
 }
 
 export const sevenTvCandidatesFromActiveEmotes = (
   emotes: SevenTvActiveEmote[],
-  scope: 'channel' | 'global' | 'user',
+  scope: SevenTvEmoteScope,
 ): EmoteCandidate[] => emotes.flatMap((emote) => {
   const candidate = sevenTvCandidateFromActiveEmote(emote, scope);
   return candidate ? [candidate] : [];
 });
+
+export async function fetchSevenTvEmoteSet(
+  emoteSetId: string,
+  scope: SevenTvEmoteScope = 'user',
+  options: ProviderOptions = {},
+): Promise<EmoteCandidate[]> {
+  const normalizedId = emoteSetId.trim();
+  if (!normalizedId) return [];
+  const data = await fetchJson<SevenTvSet>(`${API}/emote-sets/${encodeURIComponent(normalizedId)}`, {
+    signal: options.signal,
+  });
+  return sevenTvCandidatesFromActiveEmotes(data.emotes ?? [], scope);
+}
 
 async function load(url: string, scope: 'channel' | 'global', options: ProviderOptions): Promise<ProviderResult> {
   try {

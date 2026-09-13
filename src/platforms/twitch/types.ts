@@ -155,6 +155,7 @@ export type TwitchCheermoteSet = Record<string, TwitchCheermoteDefinition>;
 
 export interface TwitchNormalizeContext {
   emotes?: EmoteSet;
+  getUserEmotes?: (platformUserId: string) => EmoteSet;
   cheermotes?: TwitchCheermoteSet;
   now?: () => number;
 }
@@ -192,6 +193,7 @@ export interface TwitchConnectOptions {
   subscriptions?: TwitchChatSubscriptionType[];
   emotes?: EmoteSet;
   getEmotes?: () => EmoteSet;
+  getUserEmotes?: (platformUserId: string) => EmoteSet;
   cheermotes?: TwitchCheermoteSet;
   getCheermotes?: () => TwitchCheermoteSet;
   loadCheermotes?: boolean;

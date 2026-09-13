@@ -21,6 +21,13 @@ export interface EmoteContentMetadata {
   listed?: boolean;
 }
 
+export interface EmoteOverrideMetadata {
+  twitchGlobal?: boolean;
+  twitchSubscriber?: boolean;
+  betterTtv?: boolean;
+  frankerFaceZ?: boolean;
+}
+
 export interface EmoteImage {
   url: string;
   width?: number;
@@ -43,6 +50,7 @@ export interface Emote {
   images?: EmoteImage[];
   modifier?: EmoteModifier;
   content?: EmoteContentMetadata;
+  overrides?: EmoteOverrideMetadata;
   raw?: unknown;
 }
 

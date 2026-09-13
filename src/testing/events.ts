@@ -325,6 +325,17 @@ const isEmoteContent = (value: unknown): boolean => {
   );
 };
 
+const isEmoteOverrides = (value: unknown): boolean => {
+  const overrides = asRecord(value);
+  return Boolean(
+    overrides &&
+    isOptionalBoolean(overrides.twitchGlobal) &&
+    isOptionalBoolean(overrides.twitchSubscriber) &&
+    isOptionalBoolean(overrides.betterTtv) &&
+    isOptionalBoolean(overrides.frankerFaceZ)
+  );
+};
+
 const isEmote = (value: unknown): boolean => {
   const emote = asRecord(value);
   return Boolean(
@@ -341,7 +352,8 @@ const isEmote = (value: unknown): boolean => {
       Array.isArray(emote.images) && emote.images.every(isEmoteImage)
     )) &&
     (emote.modifier === undefined || emote.modifier === 'overlay' || emote.modifier === 'hidden') &&
-    (emote.content === undefined || isEmoteContent(emote.content))
+    (emote.content === undefined || isEmoteContent(emote.content)) &&
+    (emote.overrides === undefined || isEmoteOverrides(emote.overrides))
   );
 };
 
