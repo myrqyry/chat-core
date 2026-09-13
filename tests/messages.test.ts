@@ -72,17 +72,21 @@ describe('message fragments', () => {
 });
 
 describe('emote precedence', () => {
-  it('supports user emotes and caller-defined provider ordering', () => {
-    const defaultResult = mergeCandidates([
+  it('keeps sender-local user emotes above channel emotes', () => {
+    const result = mergeCandidates([
       { id: 'ffz', code: 'Same', provider: 'ffz', scope: 'user', zeroWidth: false, url: 'https://ffz.example/same' },
       { id: '7tv', code: 'Same', provider: '7tv', scope: 'channel', zeroWidth: false, url: 'https://7tv.example/same' },
     ]);
-    expect(defaultResult.Same.id).toBe('7tv');
+    expect(result.Same.id).toBe('ffz');
+  });
 
-    const customResult = mergeCandidates([
-      { id: 'ffz', code: 'Same', provider: 'ffz', scope: 'user', zeroWidth: false, url: 'https://ffz.example/same' },
+  it('supports caller-defined provider ordering within the same scope', () => {
+    const candidates = [
+      { id: 'ffz', code: 'Same', provider: 'ffz', scope: 'channel', zeroWidth: false, url: 'https://ffz.example/same' },
       { id: '7tv', code: 'Same', provider: '7tv', scope: 'channel', zeroWidth: false, url: 'https://7tv.example/same' },
-    ], { providerPriority: { ffz: 100 } });
-    expect(customResult.Same.id).toBe('ffz');
+    ] as const;
+
+    expect(mergeCandidates([...candidates]).Same.id).toBe('7tv');
+    expect(mergeCandidates([...candidates], { providerPriority: { ffz: 100 } }).Same.id).toBe('ffz');
   });
 });

@@ -1,5 +1,6 @@
 export type {
   Emote,
+  EmoteAssetOptions,
   EmoteCandidate,
   EmoteContentMetadata,
   EmoteFetchOptions,
@@ -55,6 +56,7 @@ export type {
   UnknownFragment,
 } from './types/chat';
 export { mergeCandidates } from './emotes/registry';
+export { emoteAssetCandidates, resolveEmoteAsset } from './emotes/assets';
 export { parseMessageFragments, twitchEmoteSpansFromTag } from './messages/parse';
 export {
   createTwitchNativeEmote,
