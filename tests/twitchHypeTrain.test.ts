@@ -225,7 +225,7 @@ describe('Twitch Hype Train support', () => {
       cooldownEndsAt: '2026-09-13T02:00:00Z',
       trainType: 'golden_kappa',
     });
-    expect(normalized?.data.progress).toBeUndefined();
-    expect(normalized?.data.goal).toBeUndefined();
+    expect(normalized?.data?.progress).toBeUndefined();
+    expect(normalized?.data?.goal).toBeUndefined();
   });
 });
