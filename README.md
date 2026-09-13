@@ -3,8 +3,9 @@
 `@myrqyry/chat-core` is the framework-neutral livestream chat substrate shared by
 the Noita and Sketchy overlays. It owns native and third-party emote discovery,
 message fragments, identity metadata, normalized chat events, platform
-connection lifecycle, and live provider state while applications keep their own
-rendering models.
+connection lifecycle, live provider state, capability planning, deterministic
+test/replay utilities, and bounded chat timeline state while applications keep
+their own rendering models.
 
 ## Emote loader
 
@@ -76,7 +77,9 @@ live7tv.close();
 
 The live connection also invalidates cached 7TV user cosmetics when cosmetic or
 entitlement events arrive. The connection accepts Twitch or Kick platform user
-IDs and subscribes with 7TV's channel context for the selected platform.
+IDs, tracks active set reassignment through `user.update`, and re-subscribes
+deterministically after reconnect instead of depending on unsupported session
+resume behavior.
 
 7TV has two different zero-width signals. Only the active-emote flag in the
 current emote set means that the emote is actually configured as zero-width.
@@ -97,13 +100,9 @@ import { connectTwitchChat } from '@myrqyry/chat-core';
 const connection = await connectTwitchChat({
   channel: 'ExampleChannel',
   accessToken: twitchUserAccessToken,
-  // clientId and userId are optional: chat-core validates the token and can
-  // derive both. Supplying them adds mismatch checks.
   clientId: twitchClientId,
   userId: twitchUserId,
-  onEvent: (event) => {
-    renderChatEvent(event);
-  },
+  onEvent: renderChatEvent,
   onStateChange: (state) => {
     console.log('twitch chat:', state);
   },
@@ -118,11 +117,25 @@ per-user message clears. EventSub duplicate deliveries are suppressed by
 `message_id`. Server-directed reconnect URLs are handled as handoffs so the old
 socket stays alive until Twitch welcomes the replacement connection.
 
-Message normalization preserves Twitch native emotes, mentions, Cheermotes,
-badges, replies, and useful message traits such as highlighted messages,
-first-time user intros, emote-only messages, and custom reward IDs. Unrecognized
-or richer Twitch payloads remain available in `raw` rather than being
-misrepresented as another event type.
+### Rich Twitch message context
+
+Normalized Twitch messages retain parent/thread reply context, Shared Chat
+source provenance, badges, native emotes, mentions, Cheermotes, renderer-neutral
+GIF/media fragments, and useful traits such as highlighted, first-message,
+emote-only, and custom reward state.
+
+Cheermotes can be enriched from Helix without a new OAuth scope or client
+secret. `connectTwitchChat()` may load them in the background, or consumers can
+inject their own `cheermotes` / `getCheermotes` cache. The connection also
+retains the EventSub subscription records created for its current session:
+
+```ts
+console.log(connection.subscriptions());
+console.log(connection.cheermotes());
+```
+
+Revocations remove the affected subscription from that state and can be
+observed through `onSubscriptionStateChange`.
 
 ### Twitch native emote catalog and assets
 
@@ -154,23 +167,148 @@ light/dark, and size variant with deterministic fallbacks. Normalized EventSub
 native emotes use the same asset model and expose all known variants in
 `Emote.images` instead of hard-coding presentation choices into the parser.
 
+### Twitch capability planning
+
+`planTwitchCapabilities()` is a pure permission/subscription planner. It records
+EventSub type/version, condition shape, OAuth scope alternatives, and whether
+`chat-core` currently normalizes that subscription.
+
+```ts
+import { planTwitchCapabilities } from '@myrqyry/chat-core';
+
+const plan = planTwitchCapabilities(
+  ['chat', 'followers', 'moderation'],
+  {
+    broadcasterUserId: channelId,
+    userId: connection.auth.userId,
+    scopes: connection.auth.scopes,
+  },
+);
+
+for (const capability of plan.capabilities) {
+  console.log(capability.id, capability.ready, capability.partial);
+}
+console.log(plan.missingScopeRequirements);
+console.log(plan.suggestedScopes);
+```
+
+Capabilities whose EventSub payloads are not normalized by `chat-core` remain
+descriptive instead of silently broadening the permissions or runtime behavior
+of ordinary chat connections.
+
+### Opt-in Hype Train events
+
+Hype Train begin/progress/end are supported through Twitch's official EventSub
+v2 subscriptions. They are intentionally opt-in and require
+`channel:read:hype_train`; default chat still only needs `user:read:chat`.
+
+```ts
+import {
+  DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
+  connectTwitchChat,
+} from '@myrqyry/chat-core';
+
+const connection = await connectTwitchChat({
+  channel: 'ExampleChannel',
+  accessToken: tokenWithChatAndHypeTrainScopes,
+  subscriptions: [
+    ...DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
+    'channel.hype_train.begin',
+    'channel.hype_train.progress',
+    'channel.hype_train.end',
+  ],
+  onEvent: (event) => {
+    if (event.type === 'hype-train') {
+      console.log(event.data);
+    }
+  },
+});
+```
+
+All three phases normalize to `type: 'hype-train'` with structured level,
+progress, goal, contribution, timing, train type, and shared-train metadata when
+Twitch supplies it. Each notification is independently meaningful; consumers
+must not assume `begin` always arrives before `progress`.
+
+## Test, record, and replay normalized events
+
+The testing helpers make overlay bugs reproducible without imposing a storage
+backend on consumers.
+
+```ts
+import {
+  ChatEventRecorder,
+  createTestMessageEvent,
+  replayChatEvent,
+  serializeChatEvents,
+  deserializeChatEvents,
+} from '@myrqyry/chat-core';
+
+const recorder = new ChatEventRecorder({ limit: 200 });
+recorder.record(realEvent);
+
+const fixture = createTestMessageEvent({ text: 'hello overlay' });
+const replayed = replayChatEvent(fixture, { timestamp: Date.now() });
+
+const saved = serializeChatEvents(recorder.snapshot(), 2);
+const restored = deserializeChatEvents(saved);
+```
+
+`origin` distinguishes `live`, `test`, and `replay` events. Deserialization
+structurally validates the typed event/message/user/emote surface before
+narrowing input to `ChatEvent`; provider-specific `data` and `raw` remain
+intentionally application-defined.
+
+## Deterministic chat timeline
+
+`ChatTimeline` reduces normalized events into bounded visible-chat state. The
+default limit is 100 entries, entries stay timestamp-sorted, and moderation
+mutations mark existing message entries deleted without destroying the
+historical record.
+
+```ts
+import { ChatTimeline } from '@myrqyry/chat-core';
+
+const timeline = new ChatTimeline({ limit: 100 });
+
+timeline.apply(event);
+render(timeline.visibleEvents());
+
+const bootstrap = timeline.snapshot({ includeDeleted: true });
+// Later, after loading application-owned storage:
+timeline.restore(bootstrap);
+```
+
+`message-delete`, timeout/ban events, full chat clears, and per-user clears are
+scoped by platform/channel and applied to prior message entries. Pure
+`reduceChatTimeline()` and `reduceChatEvents()` helpers are available for apps
+that prefer reducer-style state ownership.
+
+This composes directly with recorder/replay: captured events can be replayed
+through the same reducer to reproduce the visible overlay state that existed
+when a bug occurred.
+
 ## Kick chat
 
 `connectKickChat()` provides a browser-native Kick transport without pulling
 Node-oriented `ws` or Axios dependencies into the package. It normalizes Kick
-messages and native emotes into the same `ChatEvent` and `ChatMessage`
-contracts used by Twitch.
+messages, native emotes, replies, badges/roles, deletes, bans/timeouts,
+subscriptions, and gifted subscriptions into the same normalized contracts
+used by Twitch. Host/pin/poll/unban payloads remain structured `system` events
+instead of being mislabeled.
+
+The Pusher lifecycle honors the negotiated `activity_timeout`, waits for the
+handshake before subscribing, and only resets reconnect backoff after the
+connection becomes genuinely usable.
 
 ## Precedence
 
-Provider adapters return scoped candidates. The registry resolves collisions in
-this order:
+Provider adapters return scoped candidates. The registry resolves normal
+collisions using provider priority plus scope priority: native/platform emotes
+rank above third-party providers, channel emotes outrank globals, and 7TV ranks
+above BTTV above FFZ within comparable third-party scopes.
 
-1. Custom and native emotes.
-2. Channel emotes over global emotes.
-3. 7TV over BTTV over FFZ within the same scope.
-
-The final `EmoteSet` contains no internal scope metadata. Applications must
+The final `EmoteSet` contains no internal scope metadata. Applications should
 retain a non-empty last-known-good set when a refresh reports `complete: false`.
 
 ## Development
@@ -188,7 +326,8 @@ be advanced deliberately after a verified chat-core change lands.
 
 ## Next steps
 
-Later shared work can cover per-emote provider override flags, personal 7TV
-emote entitlements, additional authenticated Twitch moderation events,
-processed-asset caching, and platform-specific write/send APIs without forcing
-those concerns into read-only overlay consumers.
+Later shared work can cover personal 7TV emote entitlements and provider
+override semantics, additional authenticated Twitch moderation event
+normalizers, processed-asset caching, more platform adapters, a separate shared
+connection/relay companion, and platform-specific write/send APIs without
+forcing those concerns into read-only overlay consumers.
