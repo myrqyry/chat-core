@@ -19,6 +19,7 @@ const CHAT_EVENT_TYPES: ReadonlySet<string> = new Set<ChatEventType>([
   'raid',
   'reward-redemption',
   'room-state',
+  'hype-train',
   'stream-online',
   'stream-offline',
   'system',

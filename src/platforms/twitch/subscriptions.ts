@@ -3,6 +3,8 @@ import type {
   TwitchAuth,
   TwitchChatSubscriptionType,
   TwitchEventSubSubscription,
+  TwitchEventSubSubscriptionType,
+  TwitchHypeTrainSubscriptionType,
 } from './types';
 
 export const DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS: TwitchChatSubscriptionType[] = [
@@ -14,10 +16,42 @@ export const DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS: TwitchChatSubscriptionType[] = [
   'channel.chat.clear_user_messages',
 ];
 
-const versionFor = (_type: TwitchChatSubscriptionType): string => '1';
+export const TWITCH_HYPE_TRAIN_SUBSCRIPTIONS: TwitchHypeTrainSubscriptionType[] = [
+  'channel.hype_train.begin',
+  'channel.hype_train.progress',
+  'channel.hype_train.end',
+];
+
+const HYPE_TRAIN_SUBSCRIPTIONS = new Set<TwitchEventSubSubscriptionType>(
+  TWITCH_HYPE_TRAIN_SUBSCRIPTIONS,
+);
+
+const versionFor = (type: TwitchEventSubSubscriptionType): string =>
+  HYPE_TRAIN_SUBSCRIPTIONS.has(type) ? '2' : '1';
+
+const conditionFor = (
+  type: TwitchEventSubSubscriptionType,
+  broadcasterUserId: string,
+  auth: TwitchAuth,
+): Record<string, string> => HYPE_TRAIN_SUBSCRIPTIONS.has(type)
+  ? { broadcaster_user_id: broadcasterUserId }
+  : {
+      broadcaster_user_id: broadcasterUserId,
+      user_id: auth.userId,
+    };
+
+export const twitchSubscriptionRequiredScopes = (
+  subscriptions: Iterable<TwitchEventSubSubscriptionType>,
+): string[] => {
+  const required = new Set<string>();
+  for (const type of subscriptions) {
+    if (HYPE_TRAIN_SUBSCRIPTIONS.has(type)) required.add('channel:read:hype_train');
+  }
+  return [...required];
+};
 
 export async function createTwitchEventSubSubscription(
-  type: TwitchChatSubscriptionType,
+  type: TwitchEventSubSubscriptionType,
   sessionId: string,
   broadcasterUserId: string,
   auth: TwitchAuth,
@@ -35,10 +69,7 @@ export async function createTwitchEventSubSubscription(
       body: JSON.stringify({
         type,
         version: versionFor(type),
-        condition: {
-          broadcaster_user_id: broadcasterUserId,
-          user_id: auth.userId,
-        },
+        condition: conditionFor(type, broadcasterUserId, auth),
         transport: {
           method: 'websocket',
           session_id: sessionId,
@@ -70,7 +101,7 @@ export async function subscribeTwitchChat(
   broadcasterUserId: string,
   auth: TwitchAuth,
   options: {
-    subscriptions?: TwitchChatSubscriptionType[];
+    subscriptions?: TwitchEventSubSubscriptionType[];
     signal?: AbortSignal;
   } = {},
 ): Promise<TwitchEventSubSubscription[]> {

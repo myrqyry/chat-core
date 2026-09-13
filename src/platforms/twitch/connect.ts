@@ -1,9 +1,14 @@
 import type { ChatEvent } from '../../types/chat';
 import { resolveTwitchChannel, resolveTwitchEventSubAuth } from './auth';
 import { fetchTwitchCheermotes } from './cheermotes';
+import { normalizeTwitchHypeTrainEvent } from './hypeTrain';
 import { normalizeTwitchEventSubNotification } from './normalize';
 import { createTwitchEventSubSocket } from './socket';
-import { subscribeTwitchChat } from './subscriptions';
+import {
+  DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
+  subscribeTwitchChat,
+  twitchSubscriptionRequiredScopes,
+} from './subscriptions';
 import type {
   TwitchChatConnection,
   TwitchConnectOptions,
@@ -41,11 +46,17 @@ export async function connectTwitchChat(options: TwitchConnectOptions): Promise<
   if (!channelName) throw new Error('Twitch channel name must not be empty');
   if (options.signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
 
+  const requestedSubscriptions = options.subscriptions ?? DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS;
   const auth = await resolveTwitchEventSubAuth(options.accessToken, {
     clientId: options.clientId,
     userId: options.userId,
     signal: options.signal,
   });
+  const missingScopes = twitchSubscriptionRequiredScopes(requestedSubscriptions)
+    .filter((scope) => !auth.scopes?.includes(scope));
+  if (missingScopes.length > 0) {
+    throw new Error(`Twitch user access token is missing required scope${missingScopes.length === 1 ? '' : 's'}: ${missingScopes.join(', ')}`);
+  }
 
   const channel = options.broadcasterUserId
     ? { id: options.broadcasterUserId, login: channelName.toLowerCase() }
@@ -83,10 +94,12 @@ export async function connectTwitchChat(options: TwitchConnectOptions): Promise<
 
   const handleNotification = (envelope: TwitchEventSubEnvelope) => {
     if (!acceptMessage(envelope.metadata.message_id)) return;
-    const event = normalizeTwitchEventSubNotification(envelope, {
+    const context = {
       emotes: options.getEmotes?.() ?? options.emotes,
       cheermotes: currentCheermotes(),
-    });
+    };
+    const event = normalizeTwitchEventSubNotification(envelope, context)
+      ?? normalizeTwitchHypeTrainEvent(envelope, context);
     if (event) options.onEvent(event);
   };
 
@@ -133,7 +146,7 @@ export async function connectTwitchChat(options: TwitchConnectOptions): Promise<
       if (isServerReconnect) return;
       subscriptionState.clear();
       const subscriptions = await subscribeTwitchChat(session.id, channel.id, auth, {
-        subscriptions: options.subscriptions,
+        subscriptions: requestedSubscriptions,
         signal: options.signal,
       });
       for (const subscription of subscriptions) {
