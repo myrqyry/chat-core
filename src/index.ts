@@ -6,7 +6,6 @@ export type {
   EmoteFetchResult,
   EmoteImage,
   EmoteModifier,
-  EmoteOverrideMetadata,
   EmoteProvider,
   EmoteScope,
   EmoteSet,
@@ -42,6 +41,10 @@ export type {
   ChatUser,
   CheermoteFragment,
   EmoteFragment,
+  HypeTrainContribution,
+  HypeTrainData,
+  HypeTrainPhase,
+  HypeTrainSharedParticipant,
   MediaFragment,
   MentionFragment,
   ModifierFragment,
@@ -91,16 +94,12 @@ export {
   fetchGlobalSevenTv,
   fetchKickChannelSevenTv,
   fetchSevenTvChannelSnapshot,
-  fetchSevenTvEmoteSet,
   sevenTvCandidateFromActiveEmote,
   sevenTvCandidatesFromActiveEmotes,
-  sevenTvOverridesFromActiveEmote,
-  SEVEN_TV_ACTIVE_EMOTE_FLAGS,
 } from './emotes/sevenTv';
 export type {
   SevenTvActiveEmote,
   SevenTvChannelSnapshot,
-  SevenTvEmoteScope,
   SevenTvPlatform,
 } from './emotes/sevenTv';
 export { fetchChannelBttv, fetchGlobalBttv } from './emotes/bttv';
@@ -108,6 +107,20 @@ export { fetchChannelFfz, fetchGlobalFfz } from './emotes/ffz';
 export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader';
 export { CACHE_DURATION_MS, clearCachedEmotes } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
+
+export {
+  ChatTimeline,
+  DEFAULT_CHAT_TIMELINE_LIMIT,
+  reduceChatEvents,
+  reduceChatTimeline,
+} from './timeline';
+export type {
+  ChatTimelineDeletion,
+  ChatTimelineDeletionReason,
+  ChatTimelineEntry,
+  ChatTimelineOptions,
+  ChatTimelineSnapshotOptions,
+} from './timeline';
 
 export {
   ChatEventRecorder,
@@ -159,17 +172,6 @@ export type {
 } from './platforms/kick/types';
 
 export {
-  SevenTvEntitlementStore,
-  sevenTvEntitlementsFromDispatch,
-} from './seventv/entitlements';
-export type {
-  SevenTvEntitlement,
-  SevenTvEntitlementApplyResult,
-  SevenTvEntitlementKind,
-  SevenTvEntitlementLoadError,
-  SevenTvEntitlementStoreOptions,
-} from './seventv/entitlements';
-export {
   applySevenTvEmoteSetDispatch,
   connectSevenTvLive,
   replaceSevenTvChannelCandidates,
@@ -191,7 +193,6 @@ export type {
   SevenTvChangeMap,
   SevenTvDispatch,
   SevenTvEmoteSetPatchResult,
-  SevenTvEntitlementChangeInfo,
   SevenTvEventEnvelope,
   SevenTvEventSocketHandle,
   SevenTvEventSocketOptions,
@@ -239,6 +240,7 @@ export type {
   TwitchEmoteCatalogFetchOptions,
 } from './platforms/twitch/emotes';
 export { connectTwitchChat } from './platforms/twitch/connect';
+export { normalizeTwitchHypeTrainEvent } from './platforms/twitch/hypeTrain';
 export {
   isTwitchMessageEmoteOnly,
   normalizeTwitchMessageFragments,
@@ -250,6 +252,8 @@ export {
   createTwitchEventSubSubscription,
   DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
   subscribeTwitchChat,
+  twitchSubscriptionRequiredScopes,
+  TWITCH_HYPE_TRAIN_SUBSCRIPTIONS,
 } from './platforms/twitch/subscriptions';
 export type {
   TwitchAuth,
@@ -267,6 +271,8 @@ export type {
   TwitchEventSubSocketHandle,
   TwitchEventSubSocketOptions,
   TwitchEventSubSubscription,
+  TwitchEventSubSubscriptionType,
+  TwitchHypeTrainSubscriptionType,
   TwitchMessageFragmentPayload,
   TwitchNormalizeContext,
   TwitchNormalizedMessage,

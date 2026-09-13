@@ -4,6 +4,7 @@ export type TwitchCapabilityId =
   | 'chat'
   | 'channel-state'
   | 'stream-state'
+  | 'hype-train'
   | 'followers'
   | 'moderation';
 
@@ -67,6 +68,7 @@ export interface TwitchCapabilityPlan {
 const scope = (...anyOf: string[]): TwitchScopeRequirement => ({ anyOf });
 
 const CHAT_SCOPE = scope('user:read:chat');
+const HYPE_TRAIN_SCOPE = scope('channel:read:hype_train');
 
 const chatSubscription = (
   type: string,
@@ -77,6 +79,16 @@ const chatSubscription = (
   condition: 'chat-user',
   scopeRequirements: [CHAT_SCOPE],
   normalizedEventTypes,
+});
+
+const hypeTrainSubscription = (
+  type: 'channel.hype_train.begin' | 'channel.hype_train.progress' | 'channel.hype_train.end',
+): TwitchCapabilitySubscriptionDefinition => ({
+  type,
+  version: '2',
+  condition: 'broadcaster',
+  scopeRequirements: [HYPE_TRAIN_SCOPE],
+  normalizedEventTypes: ['hype-train'],
 });
 
 export const TWITCH_CAPABILITY_REGISTRY: Readonly<Record<TwitchCapabilityId, TwitchCapabilityDefinition>> = {
@@ -108,6 +120,15 @@ export const TWITCH_CAPABILITY_REGISTRY: Readonly<Record<TwitchCapabilityId, Twi
     subscriptions: [
       { type: 'stream.online', version: '1', condition: 'broadcaster', scopeRequirements: [] },
       { type: 'stream.offline', version: '1', condition: 'broadcaster', scopeRequirements: [] },
+    ],
+  },
+  'hype-train': {
+    id: 'hype-train',
+    description: 'Observe Twitch Hype Train begin, progress, and end events.',
+    subscriptions: [
+      hypeTrainSubscription('channel.hype_train.begin'),
+      hypeTrainSubscription('channel.hype_train.progress'),
+      hypeTrainSubscription('channel.hype_train.end'),
     ],
   },
   followers: {

@@ -9,6 +9,15 @@ export type TwitchChatSubscriptionType =
   | 'channel.chat.clear'
   | 'channel.chat.clear_user_messages';
 
+export type TwitchHypeTrainSubscriptionType =
+  | 'channel.hype_train.begin'
+  | 'channel.hype_train.progress'
+  | 'channel.hype_train.end';
+
+export type TwitchEventSubSubscriptionType =
+  | TwitchChatSubscriptionType
+  | TwitchHypeTrainSubscriptionType;
+
 export interface TwitchAuth {
   clientId: string;
   accessToken: string;
@@ -155,7 +164,6 @@ export type TwitchCheermoteSet = Record<string, TwitchCheermoteDefinition>;
 
 export interface TwitchNormalizeContext {
   emotes?: EmoteSet;
-  getUserEmotes?: (platformUserId: string) => EmoteSet;
   cheermotes?: TwitchCheermoteSet;
   now?: () => number;
 }
@@ -190,10 +198,9 @@ export interface TwitchConnectOptions {
   clientId?: string;
   userId?: string;
   broadcasterUserId?: string;
-  subscriptions?: TwitchChatSubscriptionType[];
+  subscriptions?: TwitchEventSubSubscriptionType[];
   emotes?: EmoteSet;
   getEmotes?: () => EmoteSet;
-  getUserEmotes?: (platformUserId: string) => EmoteSet;
   cheermotes?: TwitchCheermoteSet;
   getCheermotes?: () => TwitchCheermoteSet;
   loadCheermotes?: boolean;
