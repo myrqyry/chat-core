@@ -42,6 +42,32 @@ results are returned to the current caller but are not cached, so a later
 refresh can retry the failed provider instead of replaying the degraded result
 for the full cache lifetime.
 
+## Emote asset selection and fallbacks
+
+`Emote.images` and `altUrls` retain provider variants instead of forcing every
+consumer onto one hard-coded URL. `resolveEmoteAsset()` chooses one asset for a
+renderer, while `emoteAssetCandidates()` returns the same deterministic order
+plus safe fallbacks for retry-on-error behavior.
+
+```ts
+import { emoteAssetCandidates, resolveEmoteAsset } from '@myrqyry/chat-core';
+
+const primary = resolveEmoteAsset(emote, {
+  animated: true,
+  theme: 'dark',
+  preferredFormats: ['avif', 'webp'],
+  targetWidth: 64,
+  targetHeight: 64,
+});
+
+const fallbacks = emoteAssetCandidates(emote, { scale: 2 });
+```
+
+Without preferences, the provider's declared `emote.url` remains first. With
+preferences, animation/theme/format are matched first, then scale and intrinsic
+dimensions; stable source order breaks exact ties. Duplicate and unsafe URLs are
+removed. Applications still own image loading/retry timing and presentation.
+
 ## Live 7TV updates
 
 `connectSevenTvLive` keeps a channel's 7TV state current without polling. It
@@ -340,12 +366,14 @@ connection becomes genuinely usable.
 
 ## Precedence
 
-Provider adapters return scoped candidates. Normal precedence is resolved from
-provider priority plus scope priority; user/channel candidates outrank global
-candidates within otherwise comparable providers. By default Twitch/native
-platform emotes outrank 7TV, which outranks BTTV, which outranks FFZ.
+Provider adapters return scoped candidates. Normal precedence is lexicographic:
+scope is resolved first (`custom > native > user > channel > global > emoji`),
+then provider priority breaks ties inside that scope. This prevents a global
+emote from replacing a sender-local or channel emote merely because its provider
+has a higher provider score. Within a scope, Twitch/native platform emotes
+outrank 7TV, which outranks BTTV, which outranks FFZ by default.
 
-Two explicit exceptions are handled before the normal score:
+Two explicit exceptions are handled before the normal scope/provider comparison:
 
 1. Sender-local personal emotes are resolved before shared third-party text
    matches, while platform-native message fragments remain authoritative.

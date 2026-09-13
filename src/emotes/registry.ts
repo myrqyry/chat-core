@@ -1,4 +1,5 @@
 import type { EmoteCandidate, EmoteProvider, EmoteScope, EmoteSet, MergeCandidatesOptions } from '../types/emotes';
+import { isValidEmoteAssetUrl } from './assets';
 
 const DEFAULT_PROVIDER_PRIORITY: Record<EmoteProvider, number> = {
   custom: 100,
@@ -19,17 +20,6 @@ const DEFAULT_SCOPE_PRIORITY: Record<EmoteScope, number> = {
   channel: 30,
   global: 20,
   emoji: 10,
-};
-
-const isValidUrl = (url: string): boolean => {
-  if (typeof url !== 'string' || !url) return false;
-  if (/^data:image\/(?:png|jpe?g|gif|webp|avif|svg\+xml);base64,[a-z0-9+/=\s]+$/i.test(url)) return true;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
 };
 
 const sevenTvOverrides = (sevenTv: EmoteCandidate, other: EmoteCandidate): boolean => {
@@ -56,9 +46,14 @@ const candidateWins = (
   if (sevenTvOverrides(candidate, previous)) return true;
   if (sevenTvOverrides(previous, candidate)) return false;
 
-  const score = providerPriority[candidate.provider] + scopePriority[candidate.scope];
-  const previousScore = providerPriority[previous.provider] + scopePriority[previous.scope];
-  return score > previousScore;
+  // Scope is intentionally lexicographic rather than additive with provider
+  // priority. A sender-local or channel emote must not lose to a global emote
+  // merely because the global provider has a larger numeric provider score.
+  const scopeDelta = scopePriority[candidate.scope] - scopePriority[previous.scope];
+  if (scopeDelta !== 0) return scopeDelta > 0;
+
+  const providerDelta = providerPriority[candidate.provider] - providerPriority[previous.provider];
+  return providerDelta > 0;
 };
 
 export const mergeCandidates = (
@@ -71,7 +66,7 @@ export const mergeCandidates = (
   const winners = new Map<string, EmoteCandidate>();
 
   for (const candidate of candidates) {
-    if (!candidate.code || !isValidUrl(candidate.url)) continue;
+    if (!candidate.code || !isValidEmoteAssetUrl(candidate.url)) continue;
     const previous = winners.get(candidate.code);
     if (previous && !candidateWins(candidate, previous, providerPriority, scopePriority)) continue;
 

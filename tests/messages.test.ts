@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeCandidates, parseMessageFragments, twitchEmoteSpansFromTag } from '../src/index';
+import { mergeCandidates, parseMessageFragments, resolveEmoteAsset, twitchEmoteSpansFromTag } from '../src/index';
 import type { EmoteSet } from '../src/index';
 
 describe('message fragments', () => {
@@ -68,21 +68,34 @@ describe('message fragments', () => {
       emote: { id: '25', provider: 'twitch' },
       modifiers: [],
     });
+    const native = fragments[1];
+    expect(native.type).toBe('emote');
+    if (native.type !== 'emote') return;
+    const lightOne = native.emote.images?.find((image) => image.theme === 'light' && image.scale === 1);
+    expect(lightOne).toBeDefined();
+    expect(lightOne).not.toHaveProperty('animated');
+    expect(native.emote).not.toHaveProperty('animated');
+    expect(resolveEmoteAsset(native.emote, { theme: 'light', scale: 1, animated: true })?.url)
+      .toBe('https://static-cdn.jtvnw.net/emoticons/v2/25/default/light/1.0');
   });
 });
 
 describe('emote precedence', () => {
-  it('supports user emotes and caller-defined provider ordering', () => {
-    const defaultResult = mergeCandidates([
+  it('keeps sender-local user emotes above channel emotes', () => {
+    const result = mergeCandidates([
       { id: 'ffz', code: 'Same', provider: 'ffz', scope: 'user', zeroWidth: false, url: 'https://ffz.example/same' },
       { id: '7tv', code: 'Same', provider: '7tv', scope: 'channel', zeroWidth: false, url: 'https://7tv.example/same' },
     ]);
-    expect(defaultResult.Same.id).toBe('7tv');
+    expect(result.Same.id).toBe('ffz');
+  });
 
-    const customResult = mergeCandidates([
-      { id: 'ffz', code: 'Same', provider: 'ffz', scope: 'user', zeroWidth: false, url: 'https://ffz.example/same' },
+  it('supports caller-defined provider ordering within the same scope', () => {
+    const candidates = [
+      { id: 'ffz', code: 'Same', provider: 'ffz', scope: 'channel', zeroWidth: false, url: 'https://ffz.example/same' },
       { id: '7tv', code: 'Same', provider: '7tv', scope: 'channel', zeroWidth: false, url: 'https://7tv.example/same' },
-    ], { providerPriority: { ffz: 100 } });
-    expect(customResult.Same.id).toBe('ffz');
+    ] as const;
+
+    expect(mergeCandidates([...candidates]).Same.id).toBe('7tv');
+    expect(mergeCandidates([...candidates], { providerPriority: { ffz: 100 } }).Same.id).toBe('ffz');
   });
 });

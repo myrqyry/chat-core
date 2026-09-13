@@ -28,6 +28,21 @@ export interface EmoteOverrideMetadata {
   frankerFaceZ?: boolean;
 }
 
+export interface EmoteAssetOptions {
+  /** Prefer animated or static assets when both are available. */
+  animated?: boolean;
+  /** Prefer a dark/light themed asset while allowing theme-neutral fallbacks. */
+  theme?: EmoteTheme;
+  /** Preferred formats in descending order, for example ['avif', 'webp']. */
+  preferredFormats?: readonly string[];
+  /** Prefer the closest declared provider scale. */
+  scale?: number;
+  /** Prefer the smallest known asset that meets this intrinsic width. */
+  targetWidth?: number;
+  /** Prefer the smallest known asset that meets this intrinsic height. */
+  targetHeight?: number;
+}
+
 export interface EmoteImage {
   url: string;
   width?: number;
@@ -83,6 +98,8 @@ export interface EmoteFetchOptions {
 }
 
 export interface MergeCandidatesOptions {
+  /** Provider priority is consulted only after scope priority ties. */
   providerPriority?: Partial<Record<EmoteProvider, number>>;
+  /** Scope priority is the primary normal collision rule. */
   scopePriority?: Partial<Record<EmoteScope, number>>;
 }

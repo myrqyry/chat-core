@@ -82,11 +82,11 @@ describe('7TV active emote overrides', () => {
       id: 'twitch-sub', code: 'SubSame', url: 'https://example.com/twitch-sub.webp',
       zeroWidth: false, provider: 'twitch', scope: 'channel',
     };
-    const ordinary = sevenTvCandidateFromActiveEmote(activeEmote('Same'))!;
+    const ordinary = sevenTvCandidateFromActiveEmote(activeEmote('Same'), 'global')!;
     const globalOverride = sevenTvCandidateFromActiveEmote(activeEmote(
       'Same',
       SEVEN_TV_ACTIVE_EMOTE_FLAGS.overrideTwitchGlobal,
-    ))!;
+    ), 'global')!;
     const subscriberOverride = sevenTvCandidateFromActiveEmote(activeEmote(
       'SubSame',
       SEVEN_TV_ACTIVE_EMOTE_FLAGS.overrideTwitchSubscriber,
