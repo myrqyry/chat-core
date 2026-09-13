@@ -149,9 +149,9 @@ export function emoteAssetCandidates(
         formatPreferenceRank(b.image, options.preferredFormats);
       if (formatDelta !== 0) return formatDelta;
 
-      const scaleDelta = scalePreferenceRank(a.image, options.scale) -
-        scalePreferenceRank(b.image, options.scale);
-      if (scaleDelta !== 0) return scaleDelta;
+      const aScaleRank = scalePreferenceRank(a.image, options.scale);
+      const bScaleRank = scalePreferenceRank(b.image, options.scale);
+      if (aScaleRank !== bScaleRank) return aScaleRank < bScaleRank ? -1 : 1;
 
       const aDimensions = dimensionPreferenceRank(a.image, options.targetWidth, options.targetHeight);
       const bDimensions = dimensionPreferenceRank(b.image, options.targetWidth, options.targetHeight);

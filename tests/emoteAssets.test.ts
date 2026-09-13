@@ -98,6 +98,20 @@ describe('emote asset resolution', () => {
       .toMatchObject({ width: 96, height: 72, scale: 3 });
   });
 
+  it('falls through equal unknown scale ranks to dimension preferences', () => {
+    const withoutScales = emote({
+      url: 'https://cdn.example/wave-large.webp',
+      altUrls: [],
+      images: [
+        { url: 'https://cdn.example/wave-large.webp', width: 128, height: 96 },
+        { url: 'https://cdn.example/wave-medium.webp', width: 64, height: 48 },
+      ],
+    });
+
+    expect(resolveEmoteAsset(withoutScales, { scale: 2, targetWidth: 50, targetHeight: 40 }))
+      .toMatchObject({ url: 'https://cdn.example/wave-medium.webp', width: 64, height: 48 });
+  });
+
   it('deduplicates URLs and drops unsafe fallbacks', () => {
     const assets = emoteAssetCandidates(emote({
       altUrls: [

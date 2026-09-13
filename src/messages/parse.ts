@@ -1,20 +1,14 @@
 import type { ChatFragment, EmoteFragment, NativeEmoteSpan, ParseMessageOptions } from '../types/chat';
 import type { Emote, EmoteSet } from '../types/emotes';
-
-const TWITCH_CDN = 'https://static-cdn.jtvnw.net/emoticons/v2';
+import { createTwitchNativeEmote } from '../emotes/twitchAssets';
 const tokenPattern = /\S+/gu;
 
-const twitchEmote = (id: string, code: string): Emote => ({
+const twitchEmote = (id: string, code: string): Emote => createTwitchNativeEmote({
   id,
-  code,
-  provider: 'twitch',
-  zeroWidth: false,
-  url: `${TWITCH_CDN}/${encodeURIComponent(id)}/default/dark/3.0`,
-  altUrls: [
-    `${TWITCH_CDN}/${encodeURIComponent(id)}/default/dark/2.0`,
-    `${TWITCH_CDN}/${encodeURIComponent(id)}/default/dark/1.0`,
-  ],
-});
+  formats: ['static'],
+  scales: ['1.0', '2.0', '3.0'],
+  themes: ['dark', 'light'],
+}, code);
 
 const pushText = (fragments: ChatFragment[], text: string): void => {
   if (!text) return;

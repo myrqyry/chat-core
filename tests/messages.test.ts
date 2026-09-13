@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeCandidates, parseMessageFragments, twitchEmoteSpansFromTag } from '../src/index';
+import { mergeCandidates, parseMessageFragments, resolveEmoteAsset, twitchEmoteSpansFromTag } from '../src/index';
 import type { EmoteSet } from '../src/index';
 
 describe('message fragments', () => {
@@ -68,6 +68,12 @@ describe('message fragments', () => {
       emote: { id: '25', provider: 'twitch' },
       modifiers: [],
     });
+    const native = fragments[1];
+    expect(native.type).toBe('emote');
+    if (native.type !== 'emote') return;
+    expect(native.emote.images).toContainEqual(expect.objectContaining({ theme: 'light', scale: 1 }));
+    expect(resolveEmoteAsset(native.emote, { theme: 'light', scale: 1 })?.url)
+      .toBe('https://static-cdn.jtvnw.net/emoticons/v2/25/static/light/1.0');
   });
 });
 
