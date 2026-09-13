@@ -104,6 +104,23 @@ export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader'
 export { CACHE_DURATION_MS, clearCachedEmotes } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
 
+export {
+  ChatEventRecorder,
+  chatEventOrigin,
+  createTestChatEvent,
+  createTestMessageEvent,
+  deserializeChatEvent,
+  deserializeChatEvents,
+  isChatEvent,
+  replayChatEvent,
+  serializeChatEvent,
+  serializeChatEvents,
+} from './testing/events';
+export type {
+  ChatEventRecorderOptions,
+  TestMessageEventOptions,
+} from './testing/events';
+
 export { resolveKickChannel } from './platforms/kick/channel';
 export type { ResolveKickChannelOptions } from './platforms/kick/channel';
 export { connectKickChat } from './platforms/kick/connect';
@@ -172,6 +189,21 @@ export {
   resolveTwitchEventSubAuth,
   validateTwitchUserAccessToken,
 } from './platforms/twitch/auth';
+export {
+  planTwitchCapabilities,
+  TWITCH_CAPABILITY_REGISTRY,
+} from './platforms/twitch/capabilities';
+export type {
+  TwitchCapabilityDefinition,
+  TwitchCapabilityId,
+  TwitchCapabilityPlan,
+  TwitchCapabilityPlanOptions,
+  TwitchCapabilityStatus,
+  TwitchCapabilitySubscriptionDefinition,
+  TwitchEventSubConditionKind,
+  TwitchPlannedSubscription,
+  TwitchScopeRequirement,
+} from './platforms/twitch/capabilities';
 export {
   clearTwitchCheermoteCache,
   fetchTwitchCheermotes,
