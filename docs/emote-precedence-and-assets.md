@@ -77,7 +77,7 @@ When providers only expose URLs, `chat-core` derives metadata conservatively:
 - Twitch CDN tails such as `/default/dark/1.0`, `/static/light/2.0`, and `/animated/dark/3.0` contribute scale metadata.
 - Filename variants such as `/1x.webp`, `/2x.webp`, and `/3x.avif` contribute scale metadata.
 - Ordinary filename extensions can contribute format metadata.
-- Numeric Twitch scale suffixes are extensionless; `/3.0` must not become a invalid `format: "0"`.
+- Numeric Twitch scale suffixes are extensionless; `/3.0` must not become an invalid `format: "0"`.
 
 Unknown metadata remains unknown rather than being guessed.
 
