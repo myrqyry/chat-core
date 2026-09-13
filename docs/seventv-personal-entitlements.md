@@ -51,7 +51,9 @@ The current active-set flags preserved by `chat-core` are:
 
 The active zero-width bit remains distinct from base emote `data.flags` bit 8. A base recommendation never turns an emote into an overlay unless the active set enables zero-width.
 
-`mergeCandidates()` honors explicit 7TV provider overrides before normal provider/scope scores. Without an override bit, Twitch continues to outrank 7TV under the default precedence table.
+`mergeCandidates()` honors explicit 7TV provider overrides before normal scope-first precedence. Without an override bit, scope wins first; provider priority is consulted only when the scopes match, where Twitch/native outranks 7TV, which outranks BTTV, which outranks FFZ by default.
+
+See [Emote precedence and asset resolution](emote-precedence-and-assets.md) for the full collision contract.
 
 ## Deliberate boundaries
 
