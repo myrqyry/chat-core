@@ -5,6 +5,10 @@ import { providerStatus } from '../types/providers';
 
 const API = 'https://7tv.io/v3';
 const ACTIVE_EMOTE_ZERO_WIDTH = 1 << 0;
+const EMOTE_FLAG_SEXUAL = 1 << 16;
+const EMOTE_FLAG_EPILEPSY = 1 << 17;
+const EMOTE_FLAG_EDGY = 1 << 18;
+const EMOTE_FLAG_TWITCH_DISALLOWED = 1 << 24;
 
 export type SevenTvPlatform = 'twitch' | 'kick';
 
@@ -23,6 +27,7 @@ export interface SevenTvActiveEmote {
   data?: {
     name?: string;
     flags?: number;
+    listed?: boolean;
     animated?: boolean;
     owner?: { display_name?: string };
     host?: { url?: string; files?: SevenTvHostFile[] };
@@ -93,6 +98,14 @@ export function sevenTvCandidateFromActiveEmote(
   // zero-width in this set. data.flags bit 8 merely recommends zero-width and
   // must not override the set owner's choice.
   const zeroWidth = ((emote.flags ?? 0) & ACTIVE_EMOTE_ZERO_WIDTH) !== 0;
+  const dataFlags = emote.data?.flags ?? 0;
+  const content = {
+    sexual: (dataFlags & EMOTE_FLAG_SEXUAL) !== 0,
+    epilepsy: (dataFlags & EMOTE_FLAG_EPILEPSY) !== 0,
+    edgy: (dataFlags & EMOTE_FLAG_EDGY) !== 0,
+    twitchDisallowed: (dataFlags & EMOTE_FLAG_TWITCH_DISALLOWED) !== 0,
+    ...(typeof emote.data?.listed === 'boolean' ? { listed: emote.data.listed } : {}),
+  };
   return {
     id,
     code,
@@ -105,6 +118,7 @@ export function sevenTvCandidateFromActiveEmote(
     ownerName: emote.data?.owner?.display_name,
     images,
     ...(zeroWidth ? { modifier: 'overlay' as const } : {}),
+    content,
     raw: emote,
   };
 }

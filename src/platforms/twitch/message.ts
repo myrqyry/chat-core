@@ -1,36 +1,13 @@
 import { appendMessageFragments, parseMessageFragments } from '../../messages/parse';
+import { createTwitchNativeEmote } from '../../emotes/twitchAssets';
 import type { ChatFragment } from '../../types/chat';
-import type { Emote, EmoteSet } from '../../types/emotes';
+import type { EmoteSet } from '../../types/emotes';
 import { resolveTwitchCheermote } from './cheermotes';
 import type {
   TwitchCheermoteSet,
   TwitchMessageFragmentPayload,
   TwitchNormalizedMessage,
 } from './types';
-
-const TWITCH_CDN = 'https://static-cdn.jtvnw.net/emoticons/v2';
-
-const twitchEmote = (
-  id: string,
-  code: string,
-  formats: string[] | undefined,
-): Emote => {
-  const animated = formats?.includes('animated') ?? false;
-  const format = animated ? 'animated' : 'static';
-  const url = `${TWITCH_CDN}/${encodeURIComponent(id)}/${format}/dark/3.0`;
-  return {
-    id,
-    code,
-    provider: 'twitch',
-    zeroWidth: false,
-    animated,
-    url,
-    altUrls: [
-      `${TWITCH_CDN}/${encodeURIComponent(id)}/${format}/dark/2.0`,
-      `${TWITCH_CDN}/${encodeURIComponent(id)}/${format}/dark/1.0`,
-    ],
-  };
-};
 
 const appendTwitchFragment = (
   fragment: TwitchMessageFragmentPayload,
@@ -42,7 +19,11 @@ const appendTwitchFragment = (
     normalized.push({
       type: 'emote',
       text: fragment.text,
-      emote: twitchEmote(fragment.emote.id, fragment.text, fragment.emote.format),
+      emote: createTwitchNativeEmote(
+        { id: fragment.emote.id, formats: fragment.emote.format },
+        fragment.text,
+        fragment.emote,
+      ),
       overlays: [],
       modifiers: [],
     });

@@ -1,6 +1,7 @@
 export type {
   Emote,
   EmoteCandidate,
+  EmoteContentMetadata,
   EmoteFetchOptions,
   EmoteFetchResult,
   EmoteImage,
@@ -8,6 +9,7 @@ export type {
   EmoteProvider,
   EmoteScope,
   EmoteSet,
+  EmoteTheme,
   MergeCandidatesOptions,
   ProviderStatus,
 } from './types/emotes';
@@ -49,6 +51,18 @@ export type {
 } from './types/chat';
 export { mergeCandidates } from './emotes/registry';
 export { parseMessageFragments, twitchEmoteSpansFromTag } from './messages/parse';
+export {
+  createTwitchNativeEmote,
+  resolveTwitchEmoteAsset,
+  twitchEmoteImages,
+  TWITCH_EMOTE_CDN_TEMPLATE,
+} from './emotes/twitchAssets';
+export type {
+  TwitchEmoteAssetDescriptor,
+  TwitchEmoteAssetOptions,
+  TwitchEmoteFormat,
+  TwitchEmoteScale,
+} from './emotes/twitchAssets';
 export {
   clearBadgeCaches,
   fetchBttvBadgesForUser,
@@ -164,6 +178,17 @@ export {
   resolveTwitchCheermote,
   TWITCH_CHEERMOTE_CACHE_MS,
 } from './platforms/twitch/cheermotes';
+export {
+  fetchTwitchChannelEmoteCatalog,
+  fetchTwitchEmoteCatalog,
+  fetchTwitchGlobalEmoteCatalog,
+  twitchCatalogEntryToCandidate,
+} from './platforms/twitch/emotes';
+export type {
+  TwitchEmoteCatalog,
+  TwitchEmoteCatalogEntry,
+  TwitchEmoteCatalogFetchOptions,
+} from './platforms/twitch/emotes';
 export { connectTwitchChat } from './platforms/twitch/connect';
 export {
   isTwitchMessageEmoteOnly,
