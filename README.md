@@ -136,8 +136,6 @@ import { connectTwitchChat } from '@myrqyry/chat-core';
 const connection = await connectTwitchChat({
   channel: 'ExampleChannel',
   accessToken: twitchUserAccessToken,
-  // clientId and userId are optional: chat-core validates the token and can
-  // derive both. Supplying them adds mismatch checks.
   clientId: twitchClientId,
   userId: twitchUserId,
   onEvent: renderChatEvent,
@@ -208,11 +206,10 @@ native emotes use the same asset model and expose all known variants in
 
 ### Twitch capability planning
 
-`planTwitchCapabilities()` is a pure permission/subscription planner. It knows
-which EventSub types, versions, conditions, and OAuth scope groups belong to
-capabilities such as chat, channel state, stream state, followers, and
-moderation, without automatically requesting broader permissions or creating
-subscriptions.
+`planTwitchCapabilities()` is a pure permission/subscription planner. It records
+EventSub type/version, condition shape, OAuth scope alternatives, and whether
+`chat-core` currently normalizes that subscription without broadening runtime
+permissions as a side effect.
 
 ```ts
 import { planTwitchCapabilities } from '@myrqyry/chat-core';
@@ -222,14 +219,15 @@ const plan = planTwitchCapabilities(
   {
     broadcasterUserId: channelId,
     userId: connection.auth.userId,
-    moderatorUserId: connection.auth.userId,
-    grantedScopes: connection.auth.scopes,
+    scopes: connection.auth.scopes,
   },
 );
 
-console.log(plan.ready);
-console.log(plan.blocked);
-console.log(plan.missingScopes);
+for (const capability of plan.capabilities) {
+  console.log(capability.id, capability.ready, capability.partial);
+}
+console.log(plan.missingScopeRequirements);
+console.log(plan.suggestedScopes);
 ```
 
 Capabilities whose EventSub payloads are not normalized by `chat-core` remain
