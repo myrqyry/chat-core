@@ -131,6 +131,42 @@ export interface ChatMessage {
   raw?: unknown;
 }
 
+export type HypeTrainPhase = 'begin' | 'progress' | 'end';
+
+export interface HypeTrainContribution {
+  userId?: string;
+  username?: string;
+  displayName?: string;
+  type: string;
+  total: number;
+}
+
+export interface HypeTrainSharedParticipant {
+  broadcasterUserId: string;
+  broadcasterUsername?: string;
+  broadcasterDisplayName?: string;
+}
+
+export interface HypeTrainData {
+  phase: HypeTrainPhase;
+  id: string;
+  total: number;
+  level: number;
+  progress?: number;
+  goal?: number;
+  topContributions: HypeTrainContribution[];
+  lastContribution?: HypeTrainContribution;
+  startedAt?: string;
+  expiresAt?: string;
+  endedAt?: string;
+  cooldownEndsAt?: string;
+  trainType?: string;
+  isSharedTrain?: boolean;
+  sharedTrainParticipants?: HypeTrainSharedParticipant[];
+  allTimeHighLevel?: number;
+  allTimeHighTotal?: number;
+}
+
 export type ChatEventType =
   | 'message'
   | 'message-delete'
@@ -142,6 +178,7 @@ export type ChatEventType =
   | 'raid'
   | 'reward-redemption'
   | 'room-state'
+  | 'hype-train'
   | 'stream-online'
   | 'stream-offline'
   | 'system';

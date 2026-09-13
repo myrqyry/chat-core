@@ -41,6 +41,10 @@ export type {
   ChatUser,
   CheermoteFragment,
   EmoteFragment,
+  HypeTrainContribution,
+  HypeTrainData,
+  HypeTrainPhase,
+  HypeTrainSharedParticipant,
   MediaFragment,
   MentionFragment,
   ModifierFragment,
@@ -103,6 +107,20 @@ export { fetchChannelFfz, fetchGlobalFfz } from './emotes/ffz';
 export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader';
 export { CACHE_DURATION_MS, clearCachedEmotes } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
+
+export {
+  ChatTimeline,
+  DEFAULT_CHAT_TIMELINE_LIMIT,
+  reduceChatEvents,
+  reduceChatTimeline,
+} from './timeline';
+export type {
+  ChatTimelineDeletion,
+  ChatTimelineDeletionReason,
+  ChatTimelineEntry,
+  ChatTimelineOptions,
+  ChatTimelineSnapshotOptions,
+} from './timeline';
 
 export {
   ChatEventRecorder,
@@ -222,6 +240,7 @@ export type {
   TwitchEmoteCatalogFetchOptions,
 } from './platforms/twitch/emotes';
 export { connectTwitchChat } from './platforms/twitch/connect';
+export { normalizeTwitchHypeTrainEvent } from './platforms/twitch/hypeTrain';
 export {
   isTwitchMessageEmoteOnly,
   normalizeTwitchMessageFragments,
@@ -233,6 +252,8 @@ export {
   createTwitchEventSubSubscription,
   DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
   subscribeTwitchChat,
+  twitchSubscriptionRequiredScopes,
+  TWITCH_HYPE_TRAIN_SUBSCRIPTIONS,
 } from './platforms/twitch/subscriptions';
 export type {
   TwitchAuth,
@@ -250,6 +271,8 @@ export type {
   TwitchEventSubSocketHandle,
   TwitchEventSubSocketOptions,
   TwitchEventSubSubscription,
+  TwitchEventSubSubscriptionType,
+  TwitchHypeTrainSubscriptionType,
   TwitchMessageFragmentPayload,
   TwitchNormalizeContext,
   TwitchNormalizedMessage,
