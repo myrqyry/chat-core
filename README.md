@@ -81,7 +81,9 @@ IDs and subscribes with 7TV's channel context for the selected platform.
 7TV has two different zero-width signals. Only the active-emote flag in the
 current emote set means that the emote is actually configured as zero-width.
 The base emote metadata's zero-width flag is only a recommendation and is not
-used to force overlay behavior.
+used to force overlay behavior. Provider content metadata also preserves 7TV's
+sexual, epilepsy, edgy, Twitch-disallowed, and listed flags without conflating
+those flags with rendering behavior.
 
 ## Twitch EventSub chat
 
@@ -121,6 +123,36 @@ badges, replies, and useful message traits such as highlighted messages,
 first-time user intros, emote-only messages, and custom reward IDs. Unrecognized
 or richer Twitch payloads remain available in `raw` rather than being
 misrepresented as another event type.
+
+### Twitch native emote catalog and assets
+
+The validated Twitch auth returned by `connectTwitchChat()` can also load
+Twitch's global and broadcaster-created emote catalogs. These Helix endpoints do
+not require an additional OAuth scope and do not require a client secret.
+
+```ts
+import {
+  fetchTwitchEmoteCatalog,
+  resolveTwitchEmoteAsset,
+} from '@myrqyry/chat-core';
+
+const catalog = await fetchTwitchEmoteCatalog(
+  connection.auth,
+  connection.channel.id,
+);
+
+const emote = catalog.emotes.Kappa;
+const animatedDark2x = resolveTwitchEmoteAsset(
+  catalog.entries.find((entry) => entry.name === emote.code)!,
+  { animated: true, theme: 'dark', scale: 2 },
+);
+```
+
+Catalog entries retain the formats, themes, and scales Twitch says are actually
+available. `resolveTwitchEmoteAsset()` chooses a supported static/animated,
+light/dark, and size variant with deterministic fallbacks. Normalized EventSub
+native emotes use the same asset model and expose all known variants in
+`Emote.images` instead of hard-coding presentation choices into the parser.
 
 ## Kick chat
 

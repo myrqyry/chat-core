@@ -11,6 +11,15 @@ export type EmoteProvider =
 
 export type EmoteScope = 'native' | 'user' | 'channel' | 'global' | 'emoji' | 'custom';
 export type EmoteModifier = 'overlay' | 'hidden';
+export type EmoteTheme = 'dark' | 'light';
+
+export interface EmoteContentMetadata {
+  sexual?: boolean;
+  epilepsy?: boolean;
+  edgy?: boolean;
+  twitchDisallowed?: boolean;
+  listed?: boolean;
+}
 
 export interface EmoteImage {
   url: string;
@@ -19,6 +28,7 @@ export interface EmoteImage {
   format?: string;
   scale?: number;
   animated?: boolean;
+  theme?: EmoteTheme;
 }
 
 export interface Emote {
@@ -32,6 +42,7 @@ export interface Emote {
   ownerName?: string;
   images?: EmoteImage[];
   modifier?: EmoteModifier;
+  content?: EmoteContentMetadata;
   raw?: unknown;
 }
 
