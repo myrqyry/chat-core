@@ -10,7 +10,7 @@ import {
 describe('provider adapters', () => {
   beforeEach(() => vi.restoreAllMocks());
 
-  it('parses both 7TV zero-width flag locations and image metadata', async () => {
+  it('uses the active 7TV zero-width assignment instead of the base recommendation', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/users/twitch/123')) {
@@ -23,7 +23,7 @@ describe('provider adapters', () => {
             data: { host: { url: '//cdn.7tv.app/emote/entry', files: [{ name: '4x.webp', width: 128, height: 128 }] } },
           },
           {
-            id: 'emote-data-flag', name: 'DataOverlay',
+            id: 'emote-data-flag', name: 'DataRecommendationOnly',
             data: { flags: 256, host: { url: '//cdn.7tv.app/emote/data', files: [{ name: '4x.webp' }] } },
           },
         ],
@@ -34,11 +34,12 @@ describe('provider adapters', () => {
     const result = await fetchChannelSevenTv('channel', '123');
 
     expect(result.status).toMatchObject({ provider: '7tv', scope: 'channel', ok: true, count: 2 });
-    expect(result.candidates.map((candidate) => candidate.zeroWidth)).toEqual([true, true]);
+    expect(result.candidates.map((candidate) => candidate.zeroWidth)).toEqual([true, false]);
     expect(result.candidates[0]).toMatchObject({
       modifier: 'overlay',
       images: [{ width: 128, height: 128 }],
     });
+    expect(result.candidates[1].modifier).toBeUndefined();
   });
 
   it('maps FFZ modifiers into overlay and hidden semantics', async () => {

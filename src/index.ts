@@ -71,11 +71,23 @@ export {
 } from './identity/sevenTv';
 export { fetchJson, fetchWithTimeout, isAbortError } from './network/fetch';
 export { resolveTwitchUserId } from './emotes/twitch';
-export { fetchChannelSevenTv, fetchGlobalSevenTv } from './emotes/sevenTv';
+export {
+  fetchChannelSevenTv,
+  fetchGlobalSevenTv,
+  fetchKickChannelSevenTv,
+  fetchSevenTvChannelSnapshot,
+  sevenTvCandidateFromActiveEmote,
+  sevenTvCandidatesFromActiveEmotes,
+} from './emotes/sevenTv';
+export type {
+  SevenTvActiveEmote,
+  SevenTvChannelSnapshot,
+  SevenTvPlatform,
+} from './emotes/sevenTv';
 export { fetchChannelBttv, fetchGlobalBttv } from './emotes/bttv';
 export { fetchChannelFfz, fetchGlobalFfz } from './emotes/ffz';
 export { fetchChannelEmotes, fetchChannelEmotesDetailed } from './emotes/loader';
-export { CACHE_DURATION_MS } from './emotes/cache';
+export { CACHE_DURATION_MS, clearCachedEmotes } from './emotes/cache';
 export type { ProviderOptions, ProviderResult } from './types/providers';
 
 export { resolveKickChannel } from './platforms/kick/channel';
@@ -109,6 +121,37 @@ export type {
   KickUserBannedPayload,
   KickUserUnbannedPayload,
 } from './platforms/kick/types';
+
+export {
+  applySevenTvEmoteSetDispatch,
+  connectSevenTvLive,
+  replaceSevenTvChannelCandidates,
+} from './seventv/live';
+export {
+  parseSevenTvDispatch,
+  parseSevenTvEventFrame,
+  parseSevenTvHello,
+  sevenTvSubscribeFrame,
+  sevenTvUnsubscribeFrame,
+} from './seventv/protocol';
+export {
+  createSevenTvEventSocket,
+  sevenTvReconnectDelay,
+  shouldReconnectSevenTv,
+} from './seventv/socket';
+export type {
+  SevenTvChangeField,
+  SevenTvChangeMap,
+  SevenTvDispatch,
+  SevenTvEmoteSetPatchResult,
+  SevenTvEventEnvelope,
+  SevenTvEventSocketHandle,
+  SevenTvEventSocketOptions,
+  SevenTvHelloPayload,
+  SevenTvLiveConnection,
+  SevenTvLiveConnectOptions,
+  SevenTvSubscription,
+} from './seventv/types';
 
 export {
   resolveTwitchChannel,

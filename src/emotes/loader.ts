@@ -54,9 +54,11 @@ const load = async (channel: string): Promise<EmoteFetchResult> => {
   ]);
   const results = [...globalResults, ...channelResults];
   const providers: ProviderStatus[] = results.map((result) => result.status);
-  const emotes: EmoteSet = mergeCandidates(results.flatMap((result) => result.candidates));
+  const candidates = results.flatMap((result) => result.candidates);
+  const emotes: EmoteSet = mergeCandidates(candidates);
   const result: EmoteFetchResult = {
     emotes,
+    candidates,
     providers,
     fromCache: false,
     complete: providers.every((status) => status.ok),
@@ -74,7 +76,7 @@ export const fetchChannelEmotesDetailed = async (
   options: EmoteFetchOptions = {},
 ): Promise<EmoteFetchResult> => {
   const channel = channelName.trim().toLowerCase();
-  if (!channel) return { emotes: {}, providers: [], fromCache: false, complete: true };
+  if (!channel) return { emotes: {}, candidates: [], providers: [], fromCache: false, complete: true };
 
   if (!options.bypassCache) {
     const cached = readCachedEmotes(channel);
