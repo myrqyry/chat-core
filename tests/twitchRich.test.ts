@@ -140,7 +140,7 @@ describe('Twitch Cheermote enrichment', () => {
   });
 
   it('loads broadcaster-aware Cheermotes, caches them, and resolves the matching tier', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({
       data: Object.values(cheermotes),
     }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
