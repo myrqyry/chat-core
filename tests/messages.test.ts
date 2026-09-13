@@ -71,9 +71,12 @@ describe('message fragments', () => {
     const native = fragments[1];
     expect(native.type).toBe('emote');
     if (native.type !== 'emote') return;
-    expect(native.emote.images).toContainEqual(expect.objectContaining({ theme: 'light', scale: 1 }));
-    expect(resolveEmoteAsset(native.emote, { theme: 'light', scale: 1 })?.url)
-      .toBe('https://static-cdn.jtvnw.net/emoticons/v2/25/static/light/1.0');
+    const lightOne = native.emote.images?.find((image) => image.theme === 'light' && image.scale === 1);
+    expect(lightOne).toBeDefined();
+    expect(lightOne).not.toHaveProperty('animated');
+    expect(native.emote).not.toHaveProperty('animated');
+    expect(resolveEmoteAsset(native.emote, { theme: 'light', scale: 1, animated: true })?.url)
+      .toBe('https://static-cdn.jtvnw.net/emoticons/v2/25/default/light/1.0');
   });
 });
 

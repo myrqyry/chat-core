@@ -19,7 +19,11 @@ const normalizeFormat = (format?: string): string | undefined => {
 const formatFromUrl = (url: string): string | undefined => {
   try {
     const pathname = new URL(url).pathname;
-    return normalizeFormat(pathname.match(/\.([a-z0-9]+)$/iu)?.[1]);
+    const extension = pathname.match(/\.([a-z0-9]+)$/iu)?.[1];
+    // Twitch's extensionless CDN assets end in a numeric scale such as /3.0;
+    // the trailing `.0` is not a file format.
+    if (!extension || /^\d+$/u.test(extension)) return undefined;
+    return normalizeFormat(extension);
   } catch {
     return undefined;
   }

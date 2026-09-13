@@ -54,8 +54,11 @@ describe('emote asset resolution', () => {
       provider: 'twitch',
     };
 
-    expect(resolveEmoteAsset(twitch, { scale: 1 })).toMatchObject({ scale: 1 });
-    expect(resolveEmoteAsset(twitch, { scale: 1 })?.url).toContain('/1.0');
+    const twitchScaleOne = resolveEmoteAsset(twitch, { scale: 1 });
+    expect(twitchScaleOne).toMatchObject({ scale: 1 });
+    expect(twitchScaleOne).not.toHaveProperty('format');
+    expect(twitchScaleOne?.url).toContain('/1.0');
+    expect(emoteAssetCandidates(twitch, { preferredFormats: ['webp'] })[0]).not.toHaveProperty('format');
 
     const filenameScaled = emote({
       images: undefined,

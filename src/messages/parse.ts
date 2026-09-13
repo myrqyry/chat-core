@@ -1,14 +1,33 @@
 import type { ChatFragment, EmoteFragment, NativeEmoteSpan, ParseMessageOptions } from '../types/chat';
-import type { Emote, EmoteSet } from '../types/emotes';
-import { createTwitchNativeEmote } from '../emotes/twitchAssets';
+import type { Emote, EmoteImage, EmoteSet, EmoteTheme } from '../types/emotes';
 const tokenPattern = /\S+/gu;
 
-const twitchEmote = (id: string, code: string): Emote => createTwitchNativeEmote({
-  id,
-  formats: ['static'],
-  scales: ['1.0', '2.0', '3.0'],
-  themes: ['dark', 'light'],
-}, code);
+const TWITCH_TAG_THEMES: readonly EmoteTheme[] = ['dark', 'light'];
+const TWITCH_TAG_SCALES = [1, 2, 3] as const;
+const twitchTagAssetUrl = (id: string, theme: EmoteTheme, scale: number): string =>
+  `https://static-cdn.jtvnw.net/emoticons/v2/${encodeURIComponent(id)}/default/${theme}/${scale}.0`;
+
+const twitchEmote = (id: string, code: string): Emote => {
+  // IRC-style emote position tags only identify the emote ID. They do not say
+  // whether the emote is static or animated, so keep Twitch's /default/ CDN
+  // path and leave animation metadata unknown rather than forcing /static/.
+  const images: EmoteImage[] = TWITCH_TAG_THEMES.flatMap((theme) =>
+    TWITCH_TAG_SCALES.map((scale) => ({
+      url: twitchTagAssetUrl(id, theme, scale),
+      theme,
+      scale,
+    })));
+  const url = twitchTagAssetUrl(id, 'dark', 3);
+  return {
+    id,
+    code,
+    provider: 'twitch',
+    zeroWidth: false,
+    url,
+    altUrls: images.map((image) => image.url).filter((candidate) => candidate !== url),
+    images,
+  };
+};
 
 const pushText = (fragments: ChatFragment[], text: string): void => {
   if (!text) return;
