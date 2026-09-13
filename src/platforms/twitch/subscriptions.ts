@@ -1,5 +1,9 @@
 import { fetchWithTimeout } from '../../network/fetch';
-import type { TwitchAuth, TwitchChatSubscriptionType } from './types';
+import type {
+  TwitchAuth,
+  TwitchChatSubscriptionType,
+  TwitchEventSubSubscription,
+} from './types';
 
 export const DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS: TwitchChatSubscriptionType[] = [
   'channel.chat.message',
@@ -18,7 +22,7 @@ export async function createTwitchEventSubSubscription(
   broadcasterUserId: string,
   auth: TwitchAuth,
   signal?: AbortSignal,
-): Promise<void> {
+): Promise<TwitchEventSubSubscription | null> {
   const response = await fetchWithTimeout(
     'https://api.twitch.tv/helix/eventsub/subscriptions',
     {
@@ -46,16 +50,19 @@ export async function createTwitchEventSubSubscription(
     0,
   );
 
+  let body: { data?: TwitchEventSubSubscription[]; message?: string } | undefined;
+  try {
+    body = await response.json() as { data?: TwitchEventSubSubscription[]; message?: string };
+  } catch {
+    // Twitch normally returns JSON, but status is sufficient if it does not.
+  }
+
   if (!response.ok) {
-    let detail = '';
-    try {
-      const body = await response.json() as { message?: string };
-      detail = body.message ? `: ${body.message}` : '';
-    } catch {
-      // Ignore a non-JSON error body.
-    }
+    const detail = body?.message ? `: ${body.message}` : '';
     throw new Error(`Twitch EventSub subscription ${type} failed with ${response.status}${detail}`);
   }
+
+  return body?.data?.[0] ?? null;
 }
 
 export async function subscribeTwitchChat(
@@ -66,8 +73,9 @@ export async function subscribeTwitchChat(
     subscriptions?: TwitchChatSubscriptionType[];
     signal?: AbortSignal;
   } = {},
-): Promise<void> {
+): Promise<TwitchEventSubSubscription[]> {
   const subscriptions = options.subscriptions ?? DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS;
-  await Promise.all(subscriptions.map((type) =>
+  const created = await Promise.all(subscriptions.map((type) =>
     createTwitchEventSubSubscription(type, sessionId, broadcasterUserId, auth, options.signal)));
+  return created.filter((subscription): subscription is TwitchEventSubSubscription => subscription !== null);
 }

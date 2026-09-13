@@ -32,11 +32,14 @@ export type {
   ChatEventType,
   ChatFragment,
   ChatMessage,
+  ChatMessageReply,
+  ChatMessageSource,
   ChatMessageTraits,
   ChatPlatform,
   ChatUser,
   CheermoteFragment,
   EmoteFragment,
+  MediaFragment,
   MentionFragment,
   ModifierFragment,
   NativeEmoteSpan,
@@ -112,6 +115,12 @@ export {
   resolveTwitchEventSubAuth,
   validateTwitchUserAccessToken,
 } from './platforms/twitch/auth';
+export {
+  clearTwitchCheermoteCache,
+  fetchTwitchCheermotes,
+  resolveTwitchCheermote,
+  TWITCH_CHEERMOTE_CACHE_MS,
+} from './platforms/twitch/cheermotes';
 export { connectTwitchChat } from './platforms/twitch/connect';
 export {
   isTwitchMessageEmoteOnly,
@@ -130,6 +139,10 @@ export type {
   TwitchChatConnection,
   TwitchChatMessagePayload,
   TwitchChatSubscriptionType,
+  TwitchCheermoteDefinition,
+  TwitchCheermoteImageTheme,
+  TwitchCheermoteSet,
+  TwitchCheermoteTier,
   TwitchConnectOptions,
   TwitchEventSubEnvelope,
   TwitchEventSubMetadata,
@@ -141,5 +154,6 @@ export type {
   TwitchNormalizeContext,
   TwitchNormalizedMessage,
   TwitchResolvedChannel,
+  TwitchSubscriptionStateChange,
   TwitchTokenValidation,
 } from './platforms/twitch/types';
