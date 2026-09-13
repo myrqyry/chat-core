@@ -4,6 +4,7 @@ import {
   connectTwitchChat,
   fetchTwitchCheermotes,
   normalizeTwitchEventSubNotification,
+  resolveEmoteAsset,
   resolveTwitchCheermote,
   type TwitchCheermoteSet,
   type TwitchEventSubEnvelope,
@@ -17,8 +18,12 @@ const cheermotes: TwitchCheermoteSet = {
       id: '100',
       images: {
         dark: {
-          animated: { '4': 'https://cdn.example/cheer100.gif' },
-          static: { '4': 'https://cdn.example/cheer100.png' },
+          animated: { '4': 'https://cdn.example/cheer100-dark.gif' },
+          static: { '4': 'https://cdn.example/cheer100-dark.png' },
+        },
+        light: {
+          animated: { '4': 'https://cdn.example/cheer100-light.gif' },
+          static: { '4': 'https://cdn.example/cheer100-light.png' },
         },
       },
     }],
@@ -117,7 +122,7 @@ describe('Twitch rich message normalization', () => {
         bits: 100,
         emote: expect.objectContaining({
           provider: 'twitch-cheer',
-          url: 'https://cdn.example/cheer100.gif',
+          url: 'https://cdn.example/cheer100-dark.gif',
           animated: true,
         }),
       }),
@@ -161,9 +166,16 @@ describe('Twitch Cheermote enrichment', () => {
     expect(second).toBe(first);
     expect(resolveTwitchCheermote(first, 'cheer', 100, 100, 'Cheer100')).toMatchObject({
       provider: 'twitch-cheer',
-      url: 'https://cdn.example/cheer100.gif',
+      url: 'https://cdn.example/cheer100-dark.gif',
       code: 'Cheer100',
     });
+    const resolved = resolveTwitchCheermote(first, 'cheer', 100, 100, 'Cheer100')!;
+    expect(resolved.images).toEqual(expect.arrayContaining([
+      expect.objectContaining({ url: 'https://cdn.example/cheer100-dark.gif', theme: 'dark', animated: true }),
+      expect.objectContaining({ url: 'https://cdn.example/cheer100-light.gif', theme: 'light', animated: true }),
+    ]));
+    expect(resolveEmoteAsset(resolved, { animated: true, theme: 'light', scale: 4 })?.url)
+      .toBe('https://cdn.example/cheer100-light.gif');
   });
 });
 

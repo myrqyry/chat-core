@@ -41,6 +41,30 @@ describe('emote asset resolution', () => {
     expect(resolveEmoteAsset(emote(), { scale: 1 })?.url).toContain('/1x.webp');
   });
 
+  it('derives scale metadata from URL-only Twitch and Nx asset variants', () => {
+    const twitch: Emote = {
+      code: 'Kappa',
+      id: '25',
+      url: 'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/3.0',
+      altUrls: [
+        'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/2.0',
+        'https://static-cdn.jtvnw.net/emoticons/v2/25/default/dark/1.0',
+      ],
+      zeroWidth: false,
+      provider: 'twitch',
+    };
+
+    expect(resolveEmoteAsset(twitch, { scale: 1 })).toMatchObject({ scale: 1 });
+    expect(resolveEmoteAsset(twitch, { scale: 1 })?.url).toContain('/1.0');
+
+    const filenameScaled = emote({
+      images: undefined,
+      url: 'https://cdn.example/wave/3x.webp',
+      altUrls: ['https://cdn.example/wave/1x.webp', 'https://cdn.example/wave/2x.webp'],
+    });
+    expect(resolveEmoteAsset(filenameScaled, { scale: 2 })).toMatchObject({ scale: 2 });
+  });
+
   it('prefers a requested format before scale when both are specified', () => {
     const resolved = resolveEmoteAsset(emote(), {
       preferredFormats: ['avif', 'webp'],

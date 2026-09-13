@@ -25,22 +25,38 @@ const formatFromUrl = (url: string): string | undefined => {
   }
 };
 
-const withDerivedFormat = (image: EmoteImage): EmoteImage => {
-  if (image.format) return { ...image, format: normalizeFormat(image.format) };
-  const format = formatFromUrl(image.url);
-  return format ? { ...image, format } : { ...image };
+const scaleFromUrl = (url: string): number | undefined => {
+  try {
+    const pathname = new URL(url).pathname;
+    const twitchScale = pathname.match(/\/(?:default|animated|static)\/(?:dark|light)\/(\d+(?:\.\d+)?)\/?$/iu)?.[1];
+    const filenameScale = pathname.match(/\/(\d+(?:\.\d+)?)x\.[^/]+$/iu)?.[1];
+    const parsed = Number(twitchScale ?? filenameScale);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const withDerivedMetadata = (image: EmoteImage): EmoteImage => {
+  const format = normalizeFormat(image.format) ?? formatFromUrl(image.url);
+  const scale = image.scale ?? scaleFromUrl(image.url);
+  return {
+    ...image,
+    ...(format ? { format } : {}),
+    ...(scale !== undefined ? { scale } : {}),
+  };
 };
 
 const baseAssets = (emote: Emote): EmoteImage[] => {
   const byUrl = new Map<string, EmoteImage>();
   for (const image of emote.images ?? []) {
     if (!isValidEmoteAssetUrl(image.url) || byUrl.has(image.url)) continue;
-    byUrl.set(image.url, withDerivedFormat(image));
+    byUrl.set(image.url, withDerivedMetadata(image));
   }
 
   const primaryMetadata = byUrl.get(emote.url);
   const primary = isValidEmoteAssetUrl(emote.url)
-    ? withDerivedFormat({ animated: emote.animated, ...primaryMetadata, url: emote.url })
+    ? withDerivedMetadata({ animated: emote.animated, ...primaryMetadata, url: emote.url })
     : undefined;
 
   const result: EmoteImage[] = [];
@@ -50,7 +66,7 @@ const baseAssets = (emote: Emote): EmoteImage[] => {
   }
   for (const url of emote.altUrls ?? []) {
     if (!isValidEmoteAssetUrl(url) || result.some((image) => image.url === url)) continue;
-    result.push(withDerivedFormat({ url, animated: emote.animated }));
+    result.push(withDerivedMetadata({ url, animated: emote.animated }));
   }
   return result;
 };

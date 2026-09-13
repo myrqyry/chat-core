@@ -61,17 +61,32 @@ export async function fetchTwitchCheermotes(
 }
 
 const urlsForTier = (tier: TwitchCheermoteTier): { primary?: string; staticUrl?: string; images: EmoteImage[] } => {
-  const animated = tier.images?.dark?.animated ?? tier.images?.light?.animated;
-  const staticImages = tier.images?.dark?.static ?? tier.images?.light?.static;
-  const animatedUrl = SIZE_ORDER.map((size) => animated?.[size]).find(Boolean);
-  const staticUrl = SIZE_ORDER.map((size) => staticImages?.[size]).find(Boolean);
+  const themeOrder = ['dark', 'light'] as const;
+  const firstUrl = (kind: 'animated' | 'static'): string | undefined => {
+    for (const theme of themeOrder) {
+      const variants = tier.images?.[theme]?.[kind];
+      const url = SIZE_ORDER.map((size) => variants?.[size]).find(Boolean);
+      if (url) return url;
+    }
+    return undefined;
+  };
+
+  const animatedUrl = firstUrl('animated');
+  const staticUrl = firstUrl('static');
   const images: EmoteImage[] = [];
 
-  for (const size of SIZE_ORDER) {
-    const animatedCandidate = animated?.[size];
-    if (animatedCandidate) images.push({ url: animatedCandidate, scale: Number(size), format: 'gif', animated: true });
-    const staticCandidate = staticImages?.[size];
-    if (staticCandidate) images.push({ url: staticCandidate, scale: Number(size), format: 'png', animated: false });
+  for (const theme of themeOrder) {
+    const themed = tier.images?.[theme];
+    for (const size of SIZE_ORDER) {
+      const animatedCandidate = themed?.animated?.[size];
+      if (animatedCandidate) {
+        images.push({ url: animatedCandidate, scale: Number(size), format: 'gif', animated: true, theme });
+      }
+      const staticCandidate = themed?.static?.[size];
+      if (staticCandidate) {
+        images.push({ url: staticCandidate, scale: Number(size), format: 'png', animated: false, theme });
+      }
+    }
   }
 
   return { primary: animatedUrl ?? staticUrl, staticUrl, images };
