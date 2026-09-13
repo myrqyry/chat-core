@@ -85,6 +85,44 @@ used to force overlay behavior. Provider content metadata also preserves 7TV's
 sexual, epilepsy, edgy, Twitch-disallowed, and listed flags without conflating
 those flags with rendering behavior.
 
+### Personal 7TV emotes and entitlements
+
+Personal 7TV emotes are sender-specific entitlements, not channel-wide emotes.
+`connectSevenTvLive()` tracks `entitlement.create`, `entitlement.delete`, and
+`entitlement.reset` dispatches and keeps personal `EMOTE_SET` grants keyed by
+platform user identity.
+
+Wire the per-user map into Twitch normalization with `getUserEmotes`:
+
+```ts
+const sevenTv = await connectSevenTvLive({
+  platform: 'twitch',
+  platformUserId: broadcasterId,
+});
+
+const twitch = await connectTwitchChat({
+  channel: 'ExampleChannel',
+  accessToken: twitchUserAccessToken,
+  getEmotes: () => channelEmotes,
+  getUserEmotes: (userId) => sevenTv.personalEmotes(userId),
+  onEvent: renderChatEvent,
+});
+```
+
+Sender-local emotes win over shared third-party channel/global text matches,
+while Twitch fragments explicitly marked as native stay authoritative. The live
+7TV connection exposes `entitlements(userId?)`, `personalCandidates(userId)`,
+and `personalEmotes(userId)`; applications that already own EventAPI delivery
+can use `SevenTvEntitlementStore` directly instead.
+
+7TV active-emote provider override flags are preserved for Twitch global,
+Twitch subscriber/channel, BetterTTV, and FrankerFaceZ collisions. Explicit
+7TV override flags are applied before the normal provider/scope score, while
+the active zero-width flag remains independent from all override metadata.
+
+See [7TV personal entitlements](docs/seventv-personal-entitlements.md) for the
+state model, reconciliation behavior, and flag mapping.
+
 ## Twitch EventSub chat
 
 `connectTwitchChat()` uses Twitch's current EventSub WebSocket transport rather
@@ -163,12 +201,17 @@ contracts used by Twitch.
 
 ## Precedence
 
-Provider adapters return scoped candidates. The registry resolves collisions in
-this order:
+Provider adapters return scoped candidates. Normal precedence is resolved from
+provider priority plus scope priority; user/channel candidates outrank global
+candidates within otherwise comparable providers. By default Twitch/native
+platform emotes outrank 7TV, which outranks BTTV, which outranks FFZ.
 
-1. Custom and native emotes.
-2. Channel emotes over global emotes.
-3. 7TV over BTTV over FFZ within the same scope.
+Two explicit exceptions are handled before the normal score:
+
+1. Sender-local personal emotes are resolved before shared third-party text
+   matches, while platform-native message fragments remain authoritative.
+2. A 7TV active emote carrying the relevant provider override flag may replace
+   the matching Twitch global/subscriber, BTTV, or FFZ candidate.
 
 The final `EmoteSet` contains no internal scope metadata. Applications must
 retain a non-empty last-known-good set when a refresh reports `complete: false`.
@@ -188,7 +231,6 @@ be advanced deliberately after a verified chat-core change lands.
 
 ## Next steps
 
-Later shared work can cover per-emote provider override flags, personal 7TV
-emote entitlements, additional authenticated Twitch moderation events,
-processed-asset caching, and platform-specific write/send APIs without forcing
-those concerns into read-only overlay consumers.
+Later shared work can cover additional authenticated Twitch moderation events,
+processed-asset caching, more platform adapters, and platform-specific
+write/send APIs without forcing those concerns into read-only overlay consumers.
