@@ -1,5 +1,12 @@
 import type { BadgeRef } from '../../types/identity';
-import type { ChatEvent, ChatMessage, ChatMessageTraits, ChatUser } from '../../types/chat';
+import type {
+  ChatEvent,
+  ChatMessage,
+  ChatMessageReply,
+  ChatMessageSource,
+  ChatMessageTraits,
+  ChatUser,
+} from '../../types/chat';
 import { isTwitchMessageEmoteOnly, normalizeTwitchMessageFragments } from './message';
 import type {
   TwitchChatMessagePayload,
@@ -53,6 +60,43 @@ const userFromMessage = (event: TwitchChatMessagePayload): ChatUser => ({
   raw: event,
 });
 
+const replyFromMessage = (event: TwitchChatMessagePayload): ChatMessageReply | undefined => {
+  const reply = event.reply;
+  if (!reply) return undefined;
+  return {
+    parentMessageId: reply.parent_message_id,
+    parentMessageBody: reply.parent_message_body,
+    parentUserId: reply.parent_user_id,
+    parentUsername: reply.parent_user_login,
+    parentDisplayName: reply.parent_user_name,
+    threadMessageId: reply.thread_message_id,
+    threadUserId: reply.thread_user_id,
+    threadUsername: reply.thread_user_login,
+    threadDisplayName: reply.thread_user_name,
+  };
+};
+
+const sourceFromMessage = (event: TwitchChatMessagePayload): ChatMessageSource | undefined => {
+  const hasSource = Boolean(
+    event.source_broadcaster_user_id ||
+    event.source_broadcaster_user_login ||
+    event.source_broadcaster_user_name ||
+    event.source_message_id ||
+    event.source_badges?.length ||
+    typeof event.is_source_only === 'boolean',
+  );
+  if (!hasSource) return undefined;
+  const badgeRefs = badgeRefsFrom(event.source_badges ?? undefined);
+  return {
+    channelId: event.source_broadcaster_user_id ?? undefined,
+    channelName: event.source_broadcaster_user_login ?? undefined,
+    displayName: event.source_broadcaster_user_name ?? undefined,
+    messageId: event.source_message_id ?? undefined,
+    badgeRefs: badgeRefs.length ? badgeRefs : undefined,
+    sourceOnly: event.is_source_only ?? undefined,
+  };
+};
+
 const traitsFromMessage = (
   event: TwitchChatMessagePayload,
   fragments: ChatMessage['fragments'],
@@ -79,6 +123,7 @@ const normalizeMessage = (
     event.message.text,
     event.message.fragments,
     context.emotes,
+    context.cheermotes,
   );
   const message: ChatMessage = {
     id: event.message_id,
@@ -90,6 +135,8 @@ const normalizeMessage = (
     fragments: parsed.fragments,
     timestamp,
     replyToMessageId: event.reply?.parent_message_id,
+    reply: replyFromMessage(event),
+    source: sourceFromMessage(event),
     traits: traitsFromMessage(event, parsed.fragments),
     raw: event,
   };
@@ -139,7 +186,12 @@ const notificationMessage = (
   const sourceFragments = Array.isArray(message.fragments)
     ? message.fragments as unknown as TwitchChatMessagePayload['message']['fragments']
     : undefined;
-  const parsed = normalizeTwitchMessageFragments(message.text, sourceFragments, context.emotes);
+  const parsed = normalizeTwitchMessageFragments(
+    message.text,
+    sourceFragments,
+    context.emotes,
+    context.cheermotes,
+  );
 
   return {
     id: messageId,

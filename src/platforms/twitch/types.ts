@@ -125,8 +125,37 @@ export interface TwitchChatMessagePayload {
   is_source_only?: boolean | null;
 }
 
+export interface TwitchCheermoteImageTheme {
+  animated?: Record<string, string>;
+  static?: Record<string, string>;
+}
+
+export interface TwitchCheermoteTier {
+  min_bits: number;
+  id: string;
+  color?: string;
+  images?: {
+    dark?: TwitchCheermoteImageTheme;
+    light?: TwitchCheermoteImageTheme;
+  };
+  can_cheer?: boolean;
+  show_in_bits_card?: boolean;
+}
+
+export interface TwitchCheermoteDefinition {
+  prefix: string;
+  tiers: TwitchCheermoteTier[];
+  type?: string;
+  order?: number;
+  last_updated?: string;
+  is_charitable?: boolean;
+}
+
+export type TwitchCheermoteSet = Record<string, TwitchCheermoteDefinition>;
+
 export interface TwitchNormalizeContext {
   emotes?: EmoteSet;
+  cheermotes?: TwitchCheermoteSet;
   now?: () => number;
 }
 
@@ -148,6 +177,12 @@ export interface TwitchEventSubSocketHandle {
   close: () => void;
 }
 
+export interface TwitchSubscriptionStateChange {
+  reason: 'subscribed' | 'revoked';
+  subscriptions: TwitchEventSubSubscription[];
+  subscription?: TwitchEventSubSubscription;
+}
+
 export interface TwitchConnectOptions {
   channel: string;
   accessToken: string;
@@ -157,6 +192,9 @@ export interface TwitchConnectOptions {
   subscriptions?: TwitchChatSubscriptionType[];
   emotes?: EmoteSet;
   getEmotes?: () => EmoteSet;
+  cheermotes?: TwitchCheermoteSet;
+  getCheermotes?: () => TwitchCheermoteSet;
+  loadCheermotes?: boolean;
   signal?: AbortSignal;
   socket?: Omit<
     TwitchEventSubSocketOptions,
@@ -164,12 +202,16 @@ export interface TwitchConnectOptions {
   >;
   onEvent: (event: ChatEvent) => void;
   onStateChange?: (state: ChatConnectionState) => void;
+  onSubscriptionStateChange?: (change: TwitchSubscriptionStateChange) => void;
+  onCheermotesLoaded?: (cheermotes: TwitchCheermoteSet) => void;
   onError?: (error: Error) => void;
 }
 
 export interface TwitchChatConnection {
   auth: TwitchAuth;
   channel: TwitchResolvedChannel;
+  subscriptions: () => TwitchEventSubSubscription[];
+  cheermotes: () => TwitchCheermoteSet;
   close: () => void;
 }
 
