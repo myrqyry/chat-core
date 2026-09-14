@@ -100,7 +100,7 @@ interface SevenTvCosmeticsResponse {
   errors?: Array<{ message?: string }>;
 }
 
-const COSMETICS_QUERY = `query ChatCoreCosmetics($list: [ObjectID!]) {
+const COSMETICS_QUERY = `query ChatbusCosmetics($list: [ObjectID!]) {
   cosmetics(list: $list) {
     paints {
       id name color function repeat angle shape image_url
@@ -235,7 +235,7 @@ export async function fetchSevenTvUserCosmeticsDetailed(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        operationName: 'ChatCoreCosmetics',
+        operationName: 'ChatbusCosmetics',
         variables: { list: ids },
         query: COSMETICS_QUERY,
       }),

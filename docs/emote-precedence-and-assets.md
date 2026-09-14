@@ -43,7 +43,7 @@ Two cases are handled before the ordinary scope/provider comparison:
 `Emote.images` carries structured variants when a provider exposes them. `Emote.altUrls` carries additional safe fallback URLs. Consumers can use:
 
 ```ts
-import { emoteAssetCandidates, resolveEmoteAsset } from '@myrqyry/chat-core';
+import { emoteAssetCandidates, resolveEmoteAsset } from '@myrqyry/chatbus';
 
 const asset = resolveEmoteAsset(emote, {
   animated: true,
@@ -68,11 +68,11 @@ With no preferences, the declared `emote.url` stays first. With preferences, can
 
 Unknown animation/theme metadata ranks between an exact match and an explicit mismatch. Unknown scale does not block later dimension ranking. Duplicate URLs and unsafe URL schemes are removed before ranking.
 
-Applications still own image loading, retry timing, decoding policy, caching, and visual layout. `chat-core` only provides deterministic candidate order and metadata.
+Applications still own image loading, retry timing, decoding policy, caching, and visual layout. `Chatbus` only provides deterministic candidate order and metadata.
 
 ## Derived URL metadata
 
-When providers only expose URLs, `chat-core` derives metadata conservatively:
+When providers only expose URLs, `Chatbus` derives metadata conservatively:
 
 - Twitch CDN tails such as `/default/dark/1.0`, `/static/light/2.0`, and `/animated/dark/3.0` contribute scale metadata.
 - Filename variants such as `/1x.webp`, `/2x.webp`, and `/3x.avif` contribute scale metadata.

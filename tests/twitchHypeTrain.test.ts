@@ -47,12 +47,12 @@ describe('Twitch Hype Train support', () => {
       ready: false,
       partial: false,
     });
-    expect(blocked.subscriptions.map(({ type, version, handledByChatCore }) => ({
-      type, version, handledByChatCore,
+    expect(blocked.subscriptions.map(({ type, version, handledByChatbus }) => ({
+      type, version, handledByChatbus,
     }))).toEqual(TWITCH_HYPE_TRAIN_SUBSCRIPTIONS.map((type) => ({
       type,
       version: '2',
-      handledByChatCore: true,
+      handledByChatbus: true,
     })));
     expect(blocked.missingScopeRequirements).toEqual([
       { anyOf: ['channel:read:hype_train'] },
