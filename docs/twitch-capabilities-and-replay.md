@@ -1,9 +1,9 @@
 # Twitch capabilities and event replay
 
-`chat-core` keeps Twitch authentication planning separate from connection side effects. The capability registry describes which EventSub subscriptions belong to a feature, which condition fields they need, and which OAuth scopes must be present before that subscription is ready.
+`Chatbus` keeps Twitch authentication planning separate from connection side effects. The capability registry describes which EventSub subscriptions belong to a feature, which condition fields they need, and which OAuth scopes must be present before that subscription is ready.
 
 ```ts
-import { planTwitchCapabilities } from '@myrqyry/chat-core';
+import { planTwitchCapabilities } from '@myrqyry/chatbus';
 
 const plan = planTwitchCapabilities(
   ['chat', 'followers', 'moderation'],
@@ -27,7 +27,7 @@ for (const subscription of plan.subscriptions) {
 
 Each `TwitchScopeRequirement` is an OR-group. Every group attached to a subscription must be satisfied, but any one scope inside a group is sufficient. This is important for Twitch moderation subscriptions, where read/manage scopes are often alternatives.
 
-The planner is descriptive. A subscription being `ready` means the supplied token/scopes and IDs satisfy the known EventSub requirements; it does not mean `chat-core` already normalizes that event. `handledByChatCore` distinguishes subscriptions currently mapped to normalized `ChatEvent`s from capability definitions that are present for planning future optional packs.
+The planner is descriptive. A subscription being `ready` means the supplied token/scopes and IDs satisfy the known EventSub requirements; it does not mean `Chatbus` already normalizes that event. `handledByChatbus` distinguishes subscriptions currently mapped to normalized `ChatEvent`s from capability definitions that are present for planning future optional packs.
 
 The registry intentionally does not broaden `connectTwitchChat()` authentication. Normal chat keeps its small `user:read:chat` contract.
 
@@ -40,7 +40,7 @@ import {
   ChatEventRecorder,
   createTestMessageEvent,
   replayChatEvent,
-} from '@myrqyry/chat-core';
+} from '@myrqyry/chatbus';
 
 const test = createTestMessageEvent({
   platform: 'twitch',
@@ -57,4 +57,4 @@ renderChatEvent(replay);
 
 `createTestChatEvent()` and `createTestMessageEvent()` use deterministic defaults (`timestamp: 0`, stable IDs) so fixtures do not change between runs. `replayChatEvent()` marks the event with `origin: 'replay'`; generated fixtures use `origin: 'test'`. `chatEventOrigin()` treats an older event with no explicit origin as live.
 
-`serializeChatEvent()`, `deserializeChatEvent()`, `serializeChatEvents()`, and `deserializeChatEvents()` provide JSON round-tripping with basic envelope validation. The recorder is only an in-memory bounded ring buffer; persistence remains an application decision so `chat-core` stays framework- and storage-neutral.
+`serializeChatEvent()`, `deserializeChatEvent()`, `serializeChatEvents()`, and `deserializeChatEvents()` provide JSON round-tripping with basic envelope validation. The recorder is only an in-memory bounded ring buffer; persistence remains an application decision so `Chatbus` stays framework- and storage-neutral.

@@ -23,7 +23,8 @@ describe('Twitch capability planning', () => {
     });
     expect(plan.subscriptions).toHaveLength(DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS.length);
     expect(plan.subscriptions.every((subscription) => subscription.ready)).toBe(true);
-    expect(plan.subscriptions.every((subscription) => subscription.handledByChatCore)).toBe(true);
+    expect(plan.subscriptions.every((subscription) => subscription.handledByChatbus)).toBe(true);
+    expect(plan.subscriptions.every((subscription) => subscription.handledByChatCore === subscription.handledByChatbus)).toBe(true);
     expect(plan.subscriptions[0].conditionValues).toEqual({
       broadcaster_user_id: 'broadcaster',
       user_id: 'reader',
@@ -46,7 +47,7 @@ describe('Twitch capability planning', () => {
       type: 'channel.follow',
       version: '2',
       ready: false,
-      handledByChatCore: false,
+      handledByChatbus: false,
       conditionValues: {
         broadcaster_user_id: 'broadcaster',
         moderator_user_id: 'moderator',

@@ -24,7 +24,7 @@ export interface TwitchCapabilitySubscriptionDefinition {
   version: string;
   condition: TwitchEventSubConditionKind;
   scopeRequirements: readonly TwitchScopeRequirement[];
-  /** ChatEvent types currently emitted by chat-core for this subscription. */
+  /** ChatEvent types currently emitted by Chatbus for this subscription. */
   normalizedEventTypes?: readonly ChatEventType[];
 }
 
@@ -45,6 +45,8 @@ export interface TwitchPlannedSubscription extends TwitchCapabilitySubscriptionD
   conditionValues: Record<string, string>;
   ready: boolean;
   missingScopeRequirements: TwitchScopeRequirement[];
+  handledByChatbus: boolean;
+  /** @deprecated Use handledByChatbus. Preserved for compatibility with pre-rename consumers. */
   handledByChatCore: boolean;
 }
 
@@ -224,6 +226,7 @@ export function planTwitchCapabilities(
         conditionValues: conditionValues(definition.condition, broadcasterUserId, userId),
         ready: missing.length === 0,
         missingScopeRequirements: missing,
+        handledByChatbus: Boolean(definition.normalizedEventTypes?.length),
         handledByChatCore: Boolean(definition.normalizedEventTypes?.length),
       };
     });

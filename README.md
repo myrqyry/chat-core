@@ -1,6 +1,8 @@
-# Chat core
+# Chatbus
 
-`@myrqyry/chat-core` is the framework-neutral livestream chat substrate shared by
+![Chatbus — a chat bus with cat-ear accents and message windows](assets/chatbus.svg)
+
+`@myrqyry/chatbus` is the framework-neutral livestream chat substrate shared by
 the Noita and Sketchy overlays. It owns native and third-party emote discovery,
 message fragments, identity metadata, normalized chat events, platform
 connection lifecycle, live provider and entitlement state, capability planning,
@@ -12,7 +14,7 @@ applications keep their own rendering models.
 Use the convenience API when the application only needs the merged emote set:
 
 ```ts
-import { fetchChannelEmotes } from '@myrqyry/chat-core';
+import { fetchChannelEmotes } from '@myrqyry/chatbus';
 
 const emotes = await fetchChannelEmotes('ExampleChannel');
 ```
@@ -21,7 +23,7 @@ Use the detailed API when the application needs provider health, cache state, or
 the provider candidates needed to recompute precedence after a live update:
 
 ```ts
-import { fetchChannelEmotesDetailed } from '@myrqyry/chat-core';
+import { fetchChannelEmotesDetailed } from '@myrqyry/chatbus';
 
 const result = await fetchChannelEmotesDetailed('ExampleChannel', {
   signal: connectionAbortController.signal,
@@ -50,7 +52,7 @@ renderer, while `emoteAssetCandidates()` returns the same deterministic order
 plus safe fallbacks for retry-on-error behavior.
 
 ```ts
-import { emoteAssetCandidates, resolveEmoteAsset } from '@myrqyry/chat-core';
+import { emoteAssetCandidates, resolveEmoteAsset } from '@myrqyry/chatbus';
 
 const primary = resolveEmoteAsset(emote, {
   animated: true,
@@ -90,7 +92,7 @@ import {
   fetchChannelEmotesDetailed,
   mergeCandidates,
   replaceSevenTvChannelCandidates,
-} from '@myrqyry/chat-core';
+} from '@myrqyry/chatbus';
 
 const initial = await fetchChannelEmotesDetailed('ExampleChannel');
 let candidates = initial.candidates ?? [];
@@ -168,7 +170,7 @@ than `tmi.js`. Supply a **user access token** with `user:read:chat` at runtime;
 do not commit the token to an application bundle or repository.
 
 ```ts
-import { connectTwitchChat } from '@myrqyry/chat-core';
+import { connectTwitchChat } from '@myrqyry/chatbus';
 
 const connection = await connectTwitchChat({
   channel: 'ExampleChannel',
@@ -220,7 +222,7 @@ not require an additional OAuth scope and do not require a client secret.
 import {
   fetchTwitchEmoteCatalog,
   resolveTwitchEmoteAsset,
-} from '@myrqyry/chat-core';
+} from '@myrqyry/chatbus';
 
 const catalog = await fetchTwitchEmoteCatalog(
   connection.auth,
@@ -244,10 +246,10 @@ native emotes use the same asset model and expose all known variants in
 
 `planTwitchCapabilities()` is a pure permission/subscription planner. It records
 EventSub type/version, condition shape, OAuth scope alternatives, and whether
-`chat-core` currently normalizes that subscription.
+`Chatbus` currently normalizes that subscription.
 
 ```ts
-import { planTwitchCapabilities } from '@myrqyry/chat-core';
+import { planTwitchCapabilities } from '@myrqyry/chatbus';
 
 const plan = planTwitchCapabilities(
   ['chat', 'followers', 'moderation'],
@@ -265,7 +267,7 @@ console.log(plan.missingScopeRequirements);
 console.log(plan.suggestedScopes);
 ```
 
-Capabilities whose EventSub payloads are not normalized by `chat-core` remain
+Capabilities whose EventSub payloads are not normalized by `Chatbus` remain
 descriptive instead of silently broadening the permissions or runtime behavior
 of ordinary chat connections.
 
@@ -279,7 +281,7 @@ v2 subscriptions. They are intentionally opt-in and require
 import {
   DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
   connectTwitchChat,
-} from '@myrqyry/chat-core';
+} from '@myrqyry/chatbus';
 
 const connection = await connectTwitchChat({
   channel: 'ExampleChannel',
@@ -315,7 +317,7 @@ import {
   replayChatEvent,
   serializeChatEvents,
   deserializeChatEvents,
-} from '@myrqyry/chat-core';
+} from '@myrqyry/chatbus';
 
 const recorder = new ChatEventRecorder({ limit: 200 });
 recorder.record(realEvent);
@@ -340,7 +342,7 @@ mutations mark existing message entries deleted without destroying the
 historical record.
 
 ```ts
-import { ChatTimeline } from '@myrqyry/chat-core';
+import { ChatTimeline } from '@myrqyry/chatbus';
 
 const timeline = new ChatTimeline({ limit: 100 });
 
@@ -404,9 +406,9 @@ pnpm typecheck
 pnpm test
 ```
 
-`chat-core` lives in its own Git repository. The Noita and Sketchy overlays
+`Chatbus` lives in its own Git repository. The Noita and Sketchy overlays
 consume pinned Git commits of this package, so application dependency pins must
-be advanced deliberately after a verified chat-core change lands.
+be advanced deliberately after a verified Chatbus change lands.
 
 ## Next steps
 

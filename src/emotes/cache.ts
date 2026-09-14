@@ -1,6 +1,7 @@
 import type { EmoteFetchResult } from '../types/emotes';
 
 const CACHE_VERSION = 'v4';
+// Keep the pre-rename storage prefix so existing browser caches survive the Chatbus rename.
 const CACHE_PREFIX = `chat-core-emotes-${CACHE_VERSION}-`;
 export const CACHE_DURATION_MS = 5 * 60 * 1000;
 

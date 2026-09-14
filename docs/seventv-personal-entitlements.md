@@ -1,6 +1,6 @@
 # 7TV personal entitlements
 
-`chat-core` keeps 7TV channel emotes and user-personal emotes as separate state.
+`Chatbus` keeps 7TV channel emotes and user-personal emotes as separate state.
 
 ## Why they are separate
 
@@ -40,7 +40,7 @@ The standalone `SevenTvEntitlementStore` can be used without opening a socket wh
 
 ## 7TV active-emote override flags
 
-The current active-set flags preserved by `chat-core` are:
+The current active-set flags preserved by `Chatbus` are:
 
 - zero-width: `1 << 0`
 - pending: `1 << 8`

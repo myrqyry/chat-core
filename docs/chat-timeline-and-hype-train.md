@@ -1,11 +1,11 @@
 # Chat timeline state and Twitch Hype Train
 
-`chat-core` can keep a deterministic, bounded view of renderable chat events without imposing a UI, persistence layer, or relay server.
+`Chatbus` can keep a deterministic, bounded view of renderable chat events without imposing a UI, persistence layer, or relay server.
 
 ## ChatTimeline
 
 ```ts
-import { ChatTimeline } from '@myrqyry/chat-core';
+import { ChatTimeline } from '@myrqyry/chatbus';
 
 const timeline = new ChatTimeline({ limit: 100 });
 
@@ -37,7 +37,7 @@ import {
   DEFAULT_TWITCH_CHAT_SUBSCRIPTIONS,
   TWITCH_HYPE_TRAIN_SUBSCRIPTIONS,
   connectTwitchChat,
-} from '@myrqyry/chat-core';
+} from '@myrqyry/chatbus';
 
 const connection = await connectTwitchChat({
   channel: 'example',
