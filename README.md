@@ -1,6 +1,6 @@
 # Chatbus
 
-![Chatbus — a chat bus with cat-ear accents and message windows](assets/chatbus.svg)
+![Chatbus — a chat bus with cat-ear accents and message windows](assets/chatbus.png)
 
 `@myrqyry/chatbus` is the framework-neutral livestream chat substrate shared by
 the Noita and Sketchy overlays. It owns native and third-party emote discovery,
